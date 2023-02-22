@@ -8,13 +8,12 @@ FROM node
 # ENTRYPOINT ["/tini", "--"]
 
 #copy files
-COPY ./src/* /app/
-COPY ./dockerfiles/entrypoint.sh /command.sh
+# COPY ./src/server/ /app/
 
 RUN ["apt", "update"]
 RUN ["apt", "install", "ffmpeg", "-y"]
 WORKDIR /app
-RUN ["npm", "install"]
+# RUN ["npm", "install"]
 ENTRYPOINT ["node", "index.mjs"]
 
 # # Alpine

@@ -1,11 +1,5 @@
-# Debian
+#======= Debian =======
 FROM node
-
-# #setup tini wrapper
-# ENV TINI_VERSION v0.19.0
-# ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
-# RUN chmod +x /tini
-# ENTRYPOINT ["/tini", "--"]
 
 #copy files
 # COPY ./src/server/ /app/
@@ -16,7 +10,7 @@ WORKDIR /app
 # RUN ["npm", "install"]
 ENTRYPOINT ["node", "index.mjs"]
 
-# # Alpine
+#======== Alpine ========
 # FROM node:alpine
 # RUN ["apk", "update"]
 # RUN ["apk", "install", "ffmpeg"]

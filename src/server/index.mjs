@@ -1,10 +1,28 @@
+import process from "node:process";
+import express from "express";
+import Setup from "./setup.mjs"
+
+const config = Setup.readConfig();
+console.log(config);
+
+process.env.DB_TYPE="sqlite";
+// process.env.DB_FILE="/data/aneirin.db";
+process.env.DB_FILE="/data/aneirin.db";
+var db = Setup.init(config);
+
+
+
+
+
+
+/*
 // console.log("Hello from docker");
 import express from "express";
 import process from "node:process";
 import { api } from "./api.mjs";
 
 import { readFileSync } from "node:fs";
-var config = JSON.parse(readFileSync("config.json"))
+const config = JSON.parse(readFileSync("config.json"))
 
 
 init();
@@ -13,20 +31,20 @@ init();
 const app = express();
 const port = 80;
 
-
+*/
 /**
  * "/" should either: return the application itself, or 
  * the setup pages if the application is not yet setup
  */
+/*
 app.get("/*", (req, res) => {
     res.send("Hello world !");
 });
 
 
-
 const server = app.listen(port);
 console.log("Started");
-
+*/
 
 /**
  * This function initializes the application. From the config file, it checks if the app was installed, and if not,
@@ -40,6 +58,7 @@ console.log("Started");
  *  -If defaults to keep a clear copy of the files or not
  *  
  */
+/*
 function init() {
     console.log("Initializing application");
     if (config.installed) {
@@ -47,7 +66,9 @@ function init() {
     }
     else {
         console.log("Application not installed");
-        // process.exit(0);
+        if(process.env.DB_TYPE == "sqlite"){
+
+        }
     }
 }
 
@@ -62,3 +83,4 @@ function stopApp() {
     server.close();
     process.exit(0);
 }
+*/

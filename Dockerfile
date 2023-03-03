@@ -3,12 +3,13 @@ FROM node
 
 #copy files
 # COPY ./src/server/ /app/
+COPY ./dockerfiles/entrypoint.sh /entrypoint.sh
 
 RUN ["apt", "update"]
 RUN ["apt", "install", "ffmpeg", "-y"]
 WORKDIR /app
 # RUN ["npm", "install"]
-ENTRYPOINT ["node", "index.mjs"]
+CMD ["/entrypoint.sh"]
 
 #======== Alpine ========
 # FROM node:alpine

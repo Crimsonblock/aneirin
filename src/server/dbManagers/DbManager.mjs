@@ -105,9 +105,9 @@ class DbManager{
      * criteria are the same as the "infos" parameter in the "addNewArtist" method, in addition of 
      * an id field. 
      * 
-     * @returns an array containing all the artists informations, in JSON
+     * @param callback The function that will be called with the matching artist
      */
-    getArtist(criteria){
+    getArtist(criteria, callback){
         throw new Error("getArtist not implemented");
     }
 
@@ -138,7 +138,7 @@ class DbManager{
      * @param infos a JSON object containing the following fields:
      *      name:   The name of the album
      *      artistId:   The id of the artist who made the album.
-     *      cover*: The path to the album cover image.
+     *      coverPath*: The path to the album cover image.
      * 
      *  Fields marked with * are not mandatory.
      */

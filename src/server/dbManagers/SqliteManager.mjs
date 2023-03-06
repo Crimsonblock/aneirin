@@ -74,6 +74,8 @@ class SqliteManager extends DbManager{
                 "name" TEXT NOT NULL UNIQUE, \
                 PRIMARY KEY("id" AUTOINCREMENT)\
             )');
+
+            // Creates the tracks genres table
             this.db.run('\
             CREATE TABLE IF NOT EXISTS "trackGenres"(\
                 "id" INTEGER NOT NULL UNIQUE,\
@@ -84,6 +86,7 @@ class SqliteManager extends DbManager{
                 CONSTRAINT "trackGenresGenreId" FOREIGN KEY("genreId") REFERENCES genres("id")\
             )')
 
+            // Creates the users table
             this.db.run('\
             CREATE TABLE IF NOT EXISTS "users"(\
                 "id" INTEGER NOT NULL UNIQUE,\
@@ -164,7 +167,9 @@ class SqliteManager extends DbManager{
      *      picturePath*:   The path of the artist's picture on the drive
      */
     addNewArtist(infos){
-        throw new Error("addNewArtist not implemented");
+        if(typeof(infos.name) == "undefined") throw new Error("Artist name not included");
+        var stmt = this.db.prepare("INSERT INTO artists(name, picturePath) VALUES (?,?)");
+        stmt.run(infos.name, typeof(infos.coverPath)== "undefined" ? null : infos.coverPath).finalize();
     }
 
     /**
@@ -176,8 +181,31 @@ class SqliteManager extends DbManager{
      * 
      * @returns an array containing all the artists informations, in JSON
      */
-    getArtist(criteria){
-        throw new Error("getArtist not implemented");
+    async getArtist(criteria, callback=null){
+
+        // Creates the base query string and sets the values.
+        var searchS="SELECT * FROM artists WHERE ";
+        var searchV = [];
+
+        // Constructs the WHERE clauses with the keys of the criteria object
+        Object.keys(criteria).forEach(k =>{
+            searchS += searchV.length > 0 ? " AND "+k+"=?" : k+"=?";
+            searchV.push(criteria[k]);
+        });
+
+        // Executes the statement and calls the callback with the new value.
+        try{
+            var stmt = this.db.prepare(searchS, (err)=>{
+                if(err != null) console.log("Stmt err: ", err);
+            });
+            stmt.get(searchV, (err, row)=>{
+                if(callback != null) callback(row);
+                if(err) console.log(err);
+            });
+        }
+        catch(e){
+            console.log(e);
+        }
     }
 
     /**
@@ -186,7 +214,31 @@ class SqliteManager extends DbManager{
      * @param infos A JSON object containing the information to be updated, in addition of a mandatory "id" field.
      */
     updateArtist(infos){
-        throw new Error("updateArtist not implemented");
+        
+        // Checks if the id field is provided and of corect type
+        if(typeof(infos.id) == "undefined") throw new Error("Id not provided");
+        if(typeof(infos.id) != "number") throw new Error("Invalid ID type");
+        
+        // Creates the base UPDATE clause.
+        var updateS = "UPDATE artists SET ";
+        var updateV=[];
+
+        // Sets the new values based on the keys. The id key is ignored as it is used for the clause.
+        Object.keys(infos).forEach(k =>{
+            if(k=="id") return;
+            updateS += updateV.length > 0 ? ", "+k+"=?" : k+"=?";
+            updateV.push(infos[k]);
+        });
+
+        // Checks if any field was provided
+        if(updateV.length==0) throw new Error("Need one field to update");
+
+        // Creates the WHERE clause for the update and executes the statement
+        updateS+=" WHERE id=?";
+        updateV.push(infos.id);
+
+        var stmt = this.db.prepare(updateS);
+        stmt.run(updateV);
     }
     
     /**
@@ -198,7 +250,11 @@ class SqliteManager extends DbManager{
      * songs and albums with the corresponding artist.
      */
     removeArtist(artistId, cascadeRemove=false){
-        throw new Error("removeArtist not implemented");
+        if(cascadeRemove){
+            this.db.prepare("DELETE FROM tracks WHERE artistId=?").run(artistId);
+            this.db.prepare("DELETE FROM albums WHERE artistId=?").run(artistId);
+        }
+        this.db.prepare("DELETE FROM artists WHERE id=?").run(artistId);
     }
 
 
@@ -206,8 +262,7 @@ class SqliteManager extends DbManager{
      * Adds a new album in the database with the corresponding infos.
      * @param infos a JSON object containing the following fields:
      *      name:   The name of the album
-     *      artistId:   The id of the artist who made the album.
-     *      cover*: The path to the album cover image.
+     *      coverPath*: The path to the album cover image.
      * 
      *  Fields marked with * are not mandatory.
      */
@@ -254,7 +309,7 @@ class SqliteManager extends DbManager{
     }
 
     async updateUser(infos){
-
+        
     }
 
     removeUser(username){

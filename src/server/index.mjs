@@ -18,6 +18,7 @@ DB_TYPE -> The system to be used. Valid possibilities are: "sqlite"
 DB_HOST -> The ip address of the db host
 DB_USERNAME -> The username of the remote database
 DB_PASSWORD -> The password of the remote database
+DB_NAME -> The name of the database to connect to
 DB_FILE -> The file containing the database. Used when a local database is selected instead of a remote (e.g. sqlite)
 USERNAME -> The username to be set up for Aneirin.
 PASSWORD -> The password to be set up for Aneirin.
@@ -33,8 +34,6 @@ DATA_DIR -> The data directory. It will hold the config files, the database (if 
 PORT -> The port the server must listen to
 EXPERIMENTAL -> USED FOR DEVELOPMENT ONLY! Allows to run raw db queries (which is unsafe!). Should never be set to true in a production environment.
 */
-
-// process.env.EXPERIMENTAL=true;
 
 process.env.DB_TYPE = "sqlite";
 process.env.DB_FILE = "/data/aneirin.db";
@@ -73,8 +72,9 @@ app.get("/*", (req, res)=>{
 });
 
 // Starts the server
-const server = app.listen(port);
-console.log("Application started");
+// const server = app.listen(port);
+// console.log("Application started");
+
 
 // Node handlers for signals
 process.on('SIGTERM', stopApp);

@@ -1,7 +1,7 @@
 import DbManager from "./DbManager.mjs";
 import sqlite3 from "sqlite3";
 
-// TODO add Tags, users and maybe tokens table.
+// TODO add Tags, playlists and maybe tokens table.
 
 class SqliteManager extends DbManager{
     constructor(){
@@ -61,6 +61,8 @@ class SqliteManager extends DbManager{
                 "trackNr" INTEGER,\
                 "diskNr" INTEGER,\
                 "year" INTEGER,\
+                "mpdPathH" TEXT NOT NULL, \
+                "mpdPathL" TEXT NOT NULL, \
                 PRIMARY KEY("id" AUTOINCREMENT),\
                 CONSTRAINT "trackArtistId" FOREIGN KEY("artistId") REFERENCES artists(id)\
                 CONSTRAINT "trackAlbumId" FOREIGN KEY("albumId") REFERENCES albums(id)\
@@ -73,13 +75,22 @@ class SqliteManager extends DbManager{
                 PRIMARY KEY("id" AUTOINCREMENT)\
             )');
             this.db.run('\
-            CREATE TABLE "trackGenres"(\
+            CREATE TABLE IF NOT EXISTS "trackGenres"(\
                 "id" INTEGER NOT NULL UNIQUE,\
                 "trackId" INTEGER NOT NULL,\
                 "genreId" INTEGER NOT NULL,\
                 PRIMARY KEY("id" AUTOINCREMENT),\
                 CONSTRAINT "trackGenresTrackId" FOREIGN KEY("trackId") REFERENCES tracks("id"),\
                 CONSTRAINT "trackGenresGenreId" FOREIGN KEY("genreId") REFERENCES genres("id")\
+            )')
+
+            this.db.run('\
+            CREATE TABLE IF NOT EXISTS "users"(\
+                "id" INTEGER NOT NULL UNIQUE,\
+                "username" TEXT NOT NULL UNIQUE,\
+                "password" TEXT NOT NULL,\
+                "isAdmin" INTEGER NOT NULL,\
+                PRIMARY KEY("id" AUTOINCREMENT)\
             )')
         });
     }
@@ -237,13 +248,27 @@ class SqliteManager extends DbManager{
     }
 
 
+    async addUser(username, password, isAdmin=0){
+        var stmt = await this.db.prepare("INSERT INTO users(username, password, isAdmin) VALUES (?, ?, ?)");
+        stmt.run(username, password, isAdmin).finalize(); 
+    }
+
+    async updateUser(infos){
+
+    }
+
+    removeUser(username){
+        throw new Error("removeUser not implemented");
+    }
+
     /**
      * A function for experimental developement that execute raw queries. The function needs to throw an error with the message "Not in experimental mode" if the
      * process.env.experimental variable is not set to true.
      * @param request The raw query to be executed.
      */
     executeRequest(request){
-        throw new Error("executeRequest not implemented");
+        if(!process.env.EXPERIMENTAL) throw new Error("The application is not in experimental mode, cannot execute raw requests");
+        this.db.run(request);
     }
 }
 

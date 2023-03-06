@@ -179,6 +179,23 @@ class DbManager{
     }
 
 
+    addUser(username, password, isAdmin){
+        throw new Error("addUser not implemented");
+    }
+
+    getUser(infos){
+
+    }
+
+    authenticateUser(userInfos){
+        
+    }
+
+    removeUser(userId){
+        throw new Error("removeUser not implemented");
+    }
+
+
     /**
      * A function for experimental developement that execute raw queries. The function needs to throw an error with the message "Not in experimental mode" if the
      * process.env.experimental variable is not set to true.

@@ -11,13 +11,13 @@ WORKDIR /app
 # RUN ["npm", "install"]
 CMD ["/entrypoint.sh"]
 
-#======== Alpine ========
+# ======== Alpine ========
 # FROM node:alpine
 # RUN ["apk", "update"]
-# RUN ["apk", "install", "ffmpeg"]
+# RUN ["apk", "add", "ffmpeg"]
 
-# COPY ./src/* /app/
+# # COPY ./src/* /app/
 # COPY ./dockerfiles/entrypoint.sh /entrypoint.sh
 # WORKDIR /app
-# RUN ["npm", "install"]
+# # RUN ["npm", "install"]
 # CMD ["/entrypoint.sh"]  

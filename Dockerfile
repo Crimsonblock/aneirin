@@ -7,7 +7,7 @@ COPY ./dockerfiles/entrypoint.sh /entrypoint.sh
 
 RUN ["apt", "update"]
 RUN ["apt", "install", "ffmpeg", "-y"]
-WORKDIR /app
+WORKDIR /app/server
 # RUN ["npm", "install"]
 CMD ["/entrypoint.sh"]
 

@@ -48,6 +48,8 @@ class DbManager{
      *      diskNr*:    The number of the disk in the album
      *      year*:      The year the track was released in
      *      genre:      The genre of the track
+     *      mpdPathL:   The path to the lossy-encoded Media Presentation Descriptor file
+     *      mpdPathH:   The path to the losslessly-encoded Media Presentation Descriptor file
      *      
      *  Fields marked by * are optionals.
      */
@@ -60,7 +62,7 @@ class DbManager{
      * or if the id is not of type int.
      * @param criteria A JSON object containing the search criteria. Valid fields are 
      * the same as the "infos" object in the "addNewTrack" method, in addition with an "id" field,
-     * corresponding to the track id.
+     * corresponding to the track id. All provided fields are combined conditions (AND in sql).
      * 
      * @returns an array containing all the tracks matching the search criteria.
      */
@@ -103,12 +105,20 @@ class DbManager{
      * if the id is not of type int.
      * @param criteria The search criteria, as a JSON object. The possible fields of the 
      * criteria are the same as the "infos" parameter in the "addNewArtist" method, in addition of 
-     * an id field. 
+     * an id field. All provided fields are combined conditions (AND in sql).
      * 
      * @param callback The function that will be called with the matching artist
      */
     getArtist(criteria, callback){
         throw new Error("getArtist not implemented");
+    }
+
+    /**
+     * Retrieves all the artists from the database and execute the callback with one parameter being the array containing all the artists.
+     * @param callback The function to be called with the array containing all the artsits.
+     */
+    getAllArtists(callback){
+        throw new Error("getAllArtists not implemented");
     }
 
     /**
@@ -151,7 +161,7 @@ class DbManager{
      * if an id was provided but not of type int.
      * @param criteria The search criteria, as a JSON object. The possible fields of the 
      * criteria are the same as the "infos" parameter in the "addNewAlbum" method, in addition of 
-     * an "id" field. 
+     * an "id" field. All provided fields are combined conditions (AND in sql).
      */
     getAlbum(criteria){
         throw new Error("getAlbum not implemented");

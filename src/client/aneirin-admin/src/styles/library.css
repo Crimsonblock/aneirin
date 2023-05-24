@@ -1,0 +1,89 @@
+.library{
+    display:flex;
+    justify-content: center;
+    max-height: 90vh;
+}
+
+
+#searchLibrary{
+    margin-top:1rem;
+    margin-bottom:1rem;
+    margin-left:1rem;
+    width:85%;
+    height:2rem;
+    font-size: 1rem;
+    border:none;
+}
+
+#searchLibrary:focus{
+    outline: none;
+}
+
+th,
+td {
+    padding-right: 2rem;
+    padding-left:2rem;
+    padding-top:.5rem;
+    padding-bottom:.5rem;
+    text-align: center;
+    margin: 0;
+}
+
+table {
+    /* border: 1px solid #ddd; */
+    font-family: arial, sans-serif;
+    border-collapse: collapse;
+    width: 100%;
+}
+
+
+tr{
+    border-bottom: 1px solid #ddd;
+}
+
+#addTrack{
+    left:8%; 
+    font-size: 2rem;
+    width:4rem;
+    height:4rem;
+    padding-left:1.3rem;
+    padding-right:1.5rem;
+}
+
+#addTrack span{
+    position:relative;
+    bottom:2px;
+}
+
+#uploadFileContainer{
+    z-index:0;
+    position:absolute;
+    top:0;
+    left:0;
+    background-color: rgba(0,0,0,.5);
+    height:100%;
+    width:100%;
+    display:flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#uploadFile{
+    z-index:10;
+}
+
+#filesSummary{
+    max-height:70vh;
+    overflow:scroll;
+}
+
+.dragNDropZone{
+    display:flex;
+    padding: 1rem;
+    border-radius: 1rem;
+    justify-content: center;
+    align-items: center;
+    height:4rem;
+    background-color:#f0f8ff;
+    border: 1px dashed var(--dragNDrop-border);
+}

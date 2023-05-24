@@ -1,2 +1,2 @@
 # npm install
-node index.mjs 
+node /app/server/main.mjs

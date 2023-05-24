@@ -3,11 +3,14 @@ import express from "express";
 import Setup from "./setup.mjs";
 import apiv1 from "./apiv1.mjs";
 import path from "node:path";
+import http from "http";
+import {Server} from "socket.io";
 
 
 process.env.DATA_DIR = typeof(process.env.DATA_DIR) == "undefined" ? "/data" : process.env.DATA_DIR;
 const config = Setup.readConfig();
 const __dirname = path.resolve();
+
 
 
 /*
@@ -23,7 +26,7 @@ DB_FILE -> The file containing the database. Used when a local database is selec
 USERNAME -> The username to be set up for Aneirin.
 PASSWORD -> The password to be set up for Aneirin.
 
-
+DATA_DIR -> The data directory, where the db and the segmented files get stored.
 DATA_IN -> The input directory. All music in this directory is checked for the tags then transcoded and encapsulated in mp4, ready for streaming.
 DATA_OUT -> The output directory. All music that was requested to be ejected will be found in this directory.
 DATA_SHARED -> The shared directory. All music that was asked to be shared to be used with other system will be found here. Beware, music is not truly shared,
@@ -35,10 +38,13 @@ PORT -> The port the server must listen to
 EXPERIMENTAL -> USED FOR DEVELOPMENT ONLY! Allows to run raw db queries (which is unsafe!). Should never be set to true in a production environment.
 */
 
+console.log("[index.mjs - 38] TEST ENVIRONMENT VARIABLES SET. REMEMBER TO REMOVE BEFORE DEPLOYMENT");
 process.env.DB_TYPE = "sqlite";
 process.env.DB_FILE = "/data/aneirin.db";
 process.env.USERNAME = "username";
 process.env.PASSWORD = "password";
+
+process.env.EXPERIMENTAL = true;
 
 const resources = {};
 resources.db = Setup.init(config);
@@ -57,24 +63,27 @@ app.get("/stop", (req, res)=>{
     res.send("Stopping server...");
     stopApp();
 })
-app.get("/setup/*", (req, res)=>{
+.get("/setup/*", (req, res)=>{
     if(config.installed) res.redirect("/");
+    if(config.installStage!=1) res.redirect("/setup");
     res.sendFile(path.join(__dirname, "/setup.html"));
 })
-app.get("/setup", (req, res) =>{
+.get("/setup", (req, res) =>{
     if(config.installed) res.redirect("/");
+    if(config.installStage == 1) res.redirect("/setup/account");
     res.sendFile(path.join(__dirname, "/setup.html"));
 })
-app.get("/*", (req, res)=>{
+.get("/admin", (req, res)=>{
+    if(!config.installed) res.redirect("/setup");
+    if(config.installStage == 1) res.redirect("/setup/account");
+    res.sendFile(path.join(__dirname, "../client/admin_panel/index.html"));
+    // res.send(__dirname);
+})
+.get("/*", (req, res)=>{
     if(config.installed) res.send("Application already installed");
     else if(config.installStage == 1) res.redirect("/setup/account");
     else res.redirect("/setup");
 });
-
-// Starts the server
-// const server = app.listen(port);
-// console.log("Application started");
-
 
 // Node handlers for signals
 process.on('SIGTERM', stopApp);
@@ -86,3 +95,22 @@ function stopApp() {
     server.close();
     process.exit(0);
 }
+
+const server = http.createServer(app);
+
+
+// Socket io related stuff
+const io = new Server(server);
+
+io.on("connection", (socket)=>{
+    socket.on("sendMusic", (data)=>{
+        console.log("SocketData: ");
+        console.log(data);
+    });
+});
+
+
+server.listen(port, ()=>{
+    console.log("Application started");
+});
+

@@ -1,6 +1,6 @@
 import { read, readFileSync, writeFileSync, writeSync } from "node:fs";
 import process from "node:process";
-import SqliteManager from "./dbManagers/sqliteManager.mjs";
+import SqliteManager from "./dbManagers/SqliteManager.mjs";
 import { createHash } from "node:crypto";
 import path from "node:path";
 

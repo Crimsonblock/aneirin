@@ -6,7 +6,8 @@ import {io} from "socket.io-client"
 
 export default function App() {
 
-    const socket = process.env.NODE_ENV === "development" ? io("http://localhost:8080") : io();
+    // const socket = process.env.NODE_ENV === "development" ? io("http://localhost:8080") : io();
+    const socket = null;
 
     return (
         <BrowserRouter>

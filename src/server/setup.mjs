@@ -53,7 +53,7 @@ export function init(config) {
         config.data_shared = typeof (process.env.DATA_SHARED) == "undefined" ? "/shared" : process.env.DATA_SHARED;
 
         // Initializes the database variable
-        var db = null;
+        var db = -1;
 
 
         // Checks for the DB config in the environment variables and if found, returns a db object with the correct

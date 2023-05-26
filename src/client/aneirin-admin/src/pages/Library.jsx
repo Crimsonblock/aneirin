@@ -143,8 +143,6 @@ export default function Library(props) {
 
     };
 
-    console.log(process.env.NODE_ENV);
-
     const dropHandler = (event) => {
 
         var dataEntries = [...event.dataTransfer.items].map(e => e.webkitGetAsEntry());
@@ -161,19 +159,9 @@ export default function Library(props) {
 
 
     const confirmHandler = () => {
-        console.log(filesState);
         if (filesState.length > 0) {
             filesState[0].arrayBuffer().then(buf => {
-                console.log(buf);
-                console.log("Sending the buffer");
-                for (var i = 0; i < buf.byteLength; i+=(1024*256)) {
-                    var payload = {
-                        "size": buf.byteLength,
-                        "index": i,
-                        "data": buf.slice(i, 1024*256)
-                    }
-                    props.socket.emit("sendMusic", payload);
-                }
+                var t = new Uint8Array(buf)
             });
         }
     }

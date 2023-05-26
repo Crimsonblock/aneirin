@@ -5,6 +5,7 @@ import apiv1 from "./apiv1.mjs";
 import path from "node:path";
 import http from "http";
 import {Server} from "socket.io";
+import bodyParser from "body-parser";
 
 
 process.env.DATA_DIR = typeof(process.env.DATA_DIR) == "undefined" ? "/data" : process.env.DATA_DIR;
@@ -56,6 +57,7 @@ const port = typeof(process.env.PORT) == "undefined" ? 80 : process.env.PORT;
 // Creates the api
 const api = apiv1(config, resources);
 
+
 app.use("/api/v1", api);
 
 // Creates the server's endpoints
@@ -76,14 +78,20 @@ app.get("/stop", (req, res)=>{
 .get("/admin", (req, res)=>{
     if(!config.installed) res.redirect("/setup");
     if(config.installStage == 1) res.redirect("/setup/account");
-    res.sendFile(path.join(__dirname, "../client/admin_panel/index.html"));
+    res.send("coucou");
     // res.send(__dirname);
 })
 .get("/*", (req, res)=>{
     if(config.installed) res.send("Application already installed");
     else if(config.installStage == 1) res.redirect("/setup/account");
     else res.redirect("/setup");
-});
+})
+.post("/test", bodyParser.raw(), (req, res)=>{
+    console.log(req.body.readUInt8());
+    // console.log(req.body.toString());
+    res.send("Ok");
+})
+;
 
 // Node handlers for signals
 process.on('SIGTERM', stopApp);
@@ -100,7 +108,13 @@ const server = http.createServer(app);
 
 
 // Socket io related stuff
-const io = new Server(server);
+const io = typeof(process.env.DEV)=="undefined" ? new Server(server) : 
+// Development environment set, allows connections from the UI development server
+new Server(server, {
+    cors: {
+        origin:"http://localhost:3000"
+    }
+});
 
 io.on("connection", (socket)=>{
     socket.on("sendMusic", (data)=>{
@@ -113,4 +127,3 @@ io.on("connection", (socket)=>{
 server.listen(port, ()=>{
     console.log("Application started");
 });
-

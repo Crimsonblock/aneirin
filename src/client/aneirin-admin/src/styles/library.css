@@ -74,6 +74,7 @@ tr{
 
 #filesSummary{
     max-height:70vh;
+    max-width: 80vw;
     overflow:scroll;
 }
 

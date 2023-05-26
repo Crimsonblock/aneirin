@@ -17,10 +17,10 @@ export default forwardRef((props, ref) => {
     var cancelBtn = null;
     
     if (typeof (props.confirm) != "undefined")
-        confirmBtn = <button className="btn confirm">{props.confirm}</button>;
+        confirmBtn = <button className="btn confirm" onClick={props.confirmHandler}>{props.confirm}</button>;
 
     if (typeof (props.cancel) != "undefined")
-        cancelBtn = <button className="btn cancel">{props.cancel}</button>;
+        cancelBtn = <button className="btn cancel" onClick={props.cancelHandler}>{props.cancel}</button>;
 
     return (
         <div className={displayed ? "modalContainer" : "modalContainer hidden"} onClick={() => { setDisplay(false) }}>

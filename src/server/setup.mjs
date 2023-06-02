@@ -9,6 +9,8 @@ export default {
     "init": init
 };
 
+const VERSION = "0.1.0";
+
 /**
  * DB support addition only takes place here, provided that the 
  * abstraction layer was correctly implemented.
@@ -51,6 +53,8 @@ export function init(config) {
         config.data_in = typeof (process.env.DATA_IN) == "undefined" ? "/in" : process.env.DATA_IN;
         config.data_out = typeof (process.env.DATA_OUT) == "undefined" ? "/out" : process.env.DATA_OUT;
         config.data_shared = typeof (process.env.DATA_SHARED) == "undefined" ? "/shared" : process.env.DATA_SHARED;
+        config.data_dir = typeof(process.env.DATA_DIR == "undefined") ? "/data" : process.env.DATA_DIR;
+        config.log_level = typeof (process.env.LOG_LEVEL) == "undefined" ?  3 : process.env.LOG_LEVEL;
 
         // Initializes the database variable
         var db = -1;
@@ -87,7 +91,8 @@ export function init(config) {
                     }
                     config.db_type = process.env.DB_TYPE;
                     config.db_file = process.env.DB_FILE;
-                    writeFileSync(path.join(process.env.DATA_DIR, "/config.json"), JSON.stringify(config));
+                    config.version = VERSION;
+                    writeFileSync(path.join(process.env.DATA_DIR, "/config.json"), JSON.stringify(config, null, 2));
                 }
                 else db = null;
                 break;
@@ -146,7 +151,3 @@ function initSqliteDb(file = null, username = null, password = null) {
  *      Add the new helper functions to create the DB manager here below.
  *      It is not necessary but it is however strongly advised.
  */
-
-
-
-

@@ -7,6 +7,9 @@ import * as buffer from "buffer";
 window.Buffer = buffer.Buffer;
 
 
+// This variable is used to be able to use the development server.
+const BASE_URL = "http://localhost:8080";
+
 
 export default function Library(props) {
     const [dragged, setDragged] = useState(false);
@@ -28,8 +31,6 @@ export default function Library(props) {
     */
     const getFilesFromUnscannedEntries = (entries, alreadyRegisteredFiles = null, alreadyRegisteredTracks = null) => {
         if (entries.length === 0) return;
-        console.log(alreadyRegisteredFiles);
-        console.log(alreadyRegisteredFiles == null ? "No registered files yet" : "Registered ffiles!");
         const stateFiles = alreadyRegisteredFiles == null ? [...filesState] : alreadyRegisteredFiles;
         // console.log(stateFiles);
 
@@ -158,11 +159,36 @@ export default function Library(props) {
 
 
 
-    const confirmHandler = () => {
-        if (filesState.length > 0) {
-            filesState[0].arrayBuffer().then(buf => {
-                var t = new Uint8Array(buf)
-            });
+    const confirmHandler = async () => {
+        const CHUNK_SIZE = 1000000;
+
+        for (var i = 0; i < filesState.length; i++) {
+            var buffer = await filesState[i].arrayBuffer();
+            var response = await fetch(BASE_URL + "/api/v1/files/create/" + buffer.byteLength, { mode: "cors", method: "POST" })
+            var fileId = await response.text();
+
+            for (var j = 0; j <= Math.ceil(buffer.byteLength/CHUNK_SIZE); j++) {
+                console.log("Request ", j, "of ", Math.ceil(buffer.byteLength / CHUNK_SIZE));
+
+                response = await fetch(BASE_URL + "/api/v1/files/add/" + fileId + "/" + j * CHUNK_SIZE, {
+                    headers: {
+                        "Content-Type": "application/octet-stream"
+                    },
+                    mode: "cors",
+                    method: "POST",
+                    body: buffer.slice(j * CHUNK_SIZE, (j + 1) * CHUNK_SIZE)
+                });
+
+                
+                if(!response.ok)
+                    return;
+            }
+
+            console.log("file successfully uploaded");
+            response = await fetch(BASE_URL + "/api/v1/files/close/" + fileId, { method: "POST" });
+
+            console.log(response.ok);
+
         }
     }
 

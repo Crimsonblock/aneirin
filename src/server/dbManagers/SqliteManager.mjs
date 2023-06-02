@@ -45,7 +45,7 @@ class SqliteManager extends DbManager {
             CREATE TABLE IF NOT EXISTS "albums"(\
                 "id" INTEGER NOT NULL UNIQUE, \
                 "name" TEXT NOT NULL, \
-                "artistId" INTEGER NOT NULL UNIQUE, \
+                "artistId" INTEGER NOT NULL, \
                 "cover" TEXT, \
                 PRIMARY KEY("id" AUTOINCREMENT), \
                 CONSTRAINT "albumsArtistId" FOREIGN KEY("artistId") REFERENCES artists(id)\
@@ -56,15 +56,16 @@ class SqliteManager extends DbManager {
                 "id"	INTEGER NOT NULL UNIQUE,\
                 "title"	TEXT NOT NULL,\
                 "artistId"	INTEGER NOT NULL,\
-                "albumId" INTEGER NOT NULL,\
-                "composer" TEXT,\
-                "trackNr" INTEGER,\
-                "diskNr" INTEGER,\
-                "year" INTEGER,\
-                "path" TEXT NOT NULL, \
-                PRIMARY KEY("id" AUTOINCREMENT),\
-                CONSTRAINT "trackArtistId" FOREIGN KEY("artistId") REFERENCES artists(id)\
-                CONSTRAINT "trackAlbumId" FOREIGN KEY("albumId") REFERENCES albums(id)\
+                "albumId"	INTEGER NOT NULL,\
+                "composer"	TEXT,\
+                "trackNr"	INTEGER,\
+                "diskNr"	INTEGER,\
+                "year"	INTEGER,\
+                "path"	TEXT NOT NULL,\
+                CONSTRAINT "uniqueTrack" UNIQUE("title","albumId","artistId"),\
+                CONSTRAINT "trackArtistId" FOREIGN KEY("artistId") REFERENCES "artists"("id"),\
+                CONSTRAINT "trackAlbumId" FOREIGN KEY("albumId") REFERENCES "albums"("id"),\
+                PRIMARY KEY("id" AUTOINCREMENT)\
             )');
             // Creates the genres table
             this.db.run('\
@@ -119,20 +120,20 @@ class SqliteManager extends DbManager {
      *      diskNr*:    The number of the disk in the album
      *      year*:      The year the track was released in
      *      genre:      The genre of the track
-     *      mpdPathL:   The path to the lossy-encoded Media Presentation Descriptor file
-     *      mpdPathH:   The path to the losslessly-encoded Media Presentation Descriptor file
+     *      path:       The path to the track's files
      *      
      *  Fields marked by * are optionals.
      */
-    addNewTrack(infos) {
+    async addNewTrack(infos) {
+        return new Promise((resolve, reject) =>{
+
+       
         // Checks if all mandatory informations are provided
-        if (typeof (infos.title) == "undefined") throw new Error("Title is required to add a new track");
-        if (typeof (infos.artistId) == "undefined") throw new Error("Artist id is required to add a new track");
-        if (typeof (infos.albumId) == "undefined") throw new Error("Album id is required to add a new track");
-        if (typeof (infos.trackNr) == "undefined") throw new Error("Track number is required to add a new track");
-        if (typeof (infos.genre) == "undefined") throw new Error("Genre is required to add a new track");
-        if (typeof (infos.mpdPathL) == "undefined") throw new Error("Lossy encoded MPD path is required to add a new track");
-        if (typeof (infos.mpdPathH) == "undefined") throw new Error("Lossless encoded MPD path is required to add a new track");
+        if (typeof (infos.title) == "undefined") reject("Title is required to add a new track");
+        if (typeof (infos.artistId) == "undefined") reject("Artist id is required to add a new track");
+        if (typeof (infos.albumId) == "undefined") reject("Album id is required to add a new track");
+        if (typeof (infos.trackNr) == "undefined") reject("Track number is required to add a new track");
+        if (typeof (infos.genre) == "undefined") reject("Genre is required to add a new track");
 
 
         var genresId = [];
@@ -140,7 +141,8 @@ class SqliteManager extends DbManager {
         // Checks the type of the genres and adds the genre to the db if required
         if (typeof (infos.genre) == "string") {
             // Gets the id from the db
-            this.db.prepare("SELECT id FROM genres WHERE name=?").get(infos.genre, (row => {
+            this.db.prepare("SELECT id FROM genres WHERE name=?").get(infos.genre, (err, row) => {
+                if(err) reject(err);
 
                 // If the row does not exist
                 if (typeof (row) == "undefined") {
@@ -149,7 +151,8 @@ class SqliteManager extends DbManager {
                         // Inserts the genre in the genres table
                         this.db.prepare("INSERT INTO genres(name) VALUES(?)").run(infos.genre).finalize();
                         // Gets the id of the newly inserted genre
-                        this.db.prepare("SELECT id FROM genres WHERE name=?").get(infos.genre, row2 => {
+                        this.db.prepare("SELECT id FROM genres WHERE name=?").get(infos.genre, (err, row2) => {
+                            if(err) reject(err);
                             genresId.push(row2.id);
                         }).finalize();
                     });
@@ -159,7 +162,7 @@ class SqliteManager extends DbManager {
                     genresId.push(row.id);
                 }
 
-            })).finalize();
+            }).finalize();
 
         }
         else if (typeof (infos.genre) == "object") {
@@ -167,12 +170,12 @@ class SqliteManager extends DbManager {
             infos.genre.forEach(genre => {
                 stmt.get(genre, row => {
                     if (typeof (row) == "undefined") {
-                        this.db.serialize(()=>{
+                        this.db.serialize(() => {
                             this.db.prepare("INSERT INTO genres(name) VALUES(?)").run(genre).finalize();
-                            stmt.get(genre, row2=>{
+                            stmt.get(genre, row2 => {
                                 genresId.push(row2.id);
                             });
-                        }); 
+                        });
                     }
                     else {
                         genresId.push(row.id);
@@ -181,12 +184,16 @@ class SqliteManager extends DbManager {
             });
             stmt.finalize();
         }
-        else throw new Error("Genres must be a string or an array of strings");
+        else reject("Genres must be a string or an array of strings");
 
         // Genres ids retrieval complete
 
-        this.db.prepare("INSERT INTO title(title, artistid, albumId, composer, trackNr, diskNr, year, mpdPathL, mpdPathH) VALUES(?,?,?,?,?,?,?,?,?)")
-        .run();
+        this.db.prepare("INSERT INTO tracks(title, artistId, albumId, composer, trackNr, diskNr, year, path) VALUES(?,?,?,?,?,?,?,?)")
+            .run(infos.title, infos.artistId, infos.albumId, infos.composer, infos.trackNr, infos.diskNr, infos.year, infos.path, err=>{
+                if(err) reject(err);
+                resolve();
+            });
+        })
 
     }
 
@@ -229,10 +236,23 @@ class SqliteManager extends DbManager {
      *      name:   The name of the artist to be added.
      *      picturePath*:   The path of the artist's picture on the drive
      */
-    addNewArtist(infos) {
-        if (typeof (infos.name) == "undefined") throw new Error("Artist name not included");
-        var stmt = this.db.prepare("INSERT INTO artists(name, picturePath) VALUES (?,?)");
-        stmt.run(infos.name, typeof (infos.coverPath) == "undefined" ? null : infos.coverPath).finalize();
+    async addNewArtist(infos) {
+        return new Promise((resolve, reject) => {
+            if (typeof (infos.name) == "undefined") throw new Error("Artist name not included");
+            var stmt = this.db.prepare("INSERT INTO artists(name, picturePath) VALUES (?,?)");
+            stmt.run(infos.name, typeof (infos.coverPath) == "undefined" ? null : infos.coverPath, err => {
+                if (err) {
+                    if (err.errno == 19) {
+                        reject("Artist already exists");
+                    }
+                    else reject(err);
+                }
+                resolve();
+            }).finalize();
+
+        });
+
+
     }
 
     /**
@@ -245,29 +265,34 @@ class SqliteManager extends DbManager {
      * @returns an array containing all the artists informations, in JSON
      */
     async getArtist(criteria, callback = null) {
-        // Creates the base query string and sets the values.
-        var searchS = "SELECT * FROM artists WHERE ";
-        var searchV = [];
+        return new Promise(async (resolve, reject) => {
+            // Creates the base query string and sets the values.
+            var searchS = "SELECT * FROM artists WHERE ";
+            var searchV = [];
 
-        // Constructs the WHERE clauses with the keys of the criteria object
-        Object.keys(criteria).forEach(k => {
-            searchS += searchV.length > 0 ? " AND " + k + "=?" : k + "=?";
-            searchV.push(criteria[k]);
-        });
+            // Constructs the WHERE clauses with the keys of the criteria object
+            Object.keys(criteria).forEach(k => {
+                searchS += searchV.length > 0 ? " AND " + k + "=?" : k + "=?";
+                searchV.push(criteria[k]);
+            });
 
-        // Executes the statement and calls the callback with the new value.
-        try {
+            // Executes the statement and calls the callback with the new value.
             var stmt = this.db.prepare(searchS, (err) => {
-                if (err != null) console.log("An error occured while getting the artists: ", err);
+                if (err != null) {
+                    console.log("An error occured while getting the artists: ", err);
+                    reject(err);
+                }
             });
-            stmt.get(searchV, (err, row) => {
-                if (callback != null) callback(row);
-                if (err) console.log(err);
+
+            var stmtP = stmt.get(searchV, (err, row) => {
+                if (err != null) {
+                    console.log("oui monsieur");
+                    reject(err);
+                }
+                resolve(row);
             });
-        }
-        catch (e) {
-            console.log(e);
-        }
+        })
+
     }
 
     /**
@@ -275,8 +300,9 @@ class SqliteManager extends DbManager {
      * @param callback The function to be called with the array containing all the artsits.
      */
     getAllArtists(callback = null) {
-        this.db.all("SELECT * FROM artists", rows => {
+        this.db.all("SELECT * FROM artists", (err, rows) => {
             if (callback != null) callback(rows);
+            return rows;
         });
     }
 
@@ -340,16 +366,21 @@ class SqliteManager extends DbManager {
      * 
      *  Fields marked with * are not mandatory.
      */
-    addNewAlbum(infos) {
-        // Checks if the required fields were provided
-        if (typeof (infos.artistId) == "undefined")
-            throw new Error("Artist id not provided");
-        if (typeof (infos.name) == "undefined")
-            throw new Error("Album name not provided");
+    async addNewAlbum(infos) {
+        return new Promise((resolve, reject) => {
+            // Checks if the required fields were provided
+            if (typeof (infos.artistId) == "undefined")
+                reject("Artist id not provided");
+            if (typeof (infos.name) == "undefined")
+                reject("Album name not provided");
 
-        // Prepares the statement and executes it with the correct values
-        stmt.prepare("INSERT INTO albums(name, artistId, cover) VALUES (?,?,?)")
-            .run(infos.name, infos.artistId, typeof (infos.coverPath) == "undefined" ? null : infos.coverPath);
+            // Prepares the statement and executes it with the correct values
+            this.db.prepare("INSERT INTO albums(name, artistId, cover) VALUES (?,?,?)")
+                .run(infos.name, infos.artistId, typeof (infos.coverPath) == "undefined" ? null : infos.coverPath, (err) => {
+                    if (err) reject(err);
+                    resolve();
+                });
+        });
     }
 
     /**
@@ -359,30 +390,35 @@ class SqliteManager extends DbManager {
      * criteria are the same as the "infos" parameter in the "addNewAlbum" method, in addition of 
      * an "id" field. 
      */
-    getAlbum(criteria) {
-        // Creates the base query string and sets the values.
-        var searchS = "SELECT * FROM albums WHERE ";
-        var searchV = [];
+    async getAlbum(criteria) {
+        return new Promise((resolve, reject)=> {
+            // Creates the base query string and sets the values.
+            var searchS = "SELECT * FROM albums WHERE ";
+            var searchV = [];
 
-        // Constructs the WHERE clauses with the keys of the criteria object
-        Object.keys(criteria).forEach(k => {
-            searchS += searchV.length > 0 ? " AND " + k + "=?" : k + "=?";
-            searchV.push(criteria[k]);
+            // Constructs the WHERE clauses with the keys of the criteria object
+            Object.keys(criteria).forEach(k => {
+                searchS += searchV.length > 0 ? " AND " + k + "=?" : k + "=?";
+                searchV.push(criteria[k]);
+            });
+
+            // Executes the statement and calls the callback with the new value.
+            try {
+                var stmt = this.db.prepare(searchS, (err) => {
+                    if (err != null) console.log("An error occured while getting the albums: ", err);
+                });
+                stmt.get(searchV, (err, row) => {
+                    if(err){
+                        reject(err);
+                    }
+                    resolve(row);
+                });
+            }
+            catch (e) {
+                console.log(e);
+            }
         });
 
-        // Executes the statement and calls the callback with the new value.
-        try {
-            var stmt = this.db.prepare(searchS, (err) => {
-                if (err != null) console.log("An error occured while getting the albums: ", err);
-            });
-            stmt.get(searchV, (err, row) => {
-                if (callback != null) callback(row);
-                if (err) console.log(err);
-            });
-        }
-        catch (e) {
-            console.log(e);
-        }
     }
 
     /**

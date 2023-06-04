@@ -18,7 +18,7 @@ Section to be written
 ### Todos
 Aneirin is far from complete. You can find what is left to be done for v1.0.0 in this section:
 
-- [ ] Write the "Run Aneirin with docker
+- [ ] Write the "Run Aneirin with docker" section in the readme
 - [ ] Write the "Run Aneirin from source" section in the readme  
 
 Server: 

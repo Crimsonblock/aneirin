@@ -24,12 +24,7 @@ export default function Library(props) {
         modalRef.current.show();
     }
 
-    /**
-     * Recursive function to scan the other folders/files in the subfolders.
-     * This is needed to further retrieve files informations, as the provided files are nowin the form of 
-     * FileSystemEntry and not File anymore. It could have been possible to use only one function for both stages, but 
-     * this way makes it faster, as less conversions are needed, and we are able to get the files in a synchronous way.
-    */
+
     const getFilesFromUnscannedEntries = (entries, alreadyRegisteredFiles = null, alreadyRegisteredTracks = null) => {
         if (entries.length === 0) return;
         const stateFiles = alreadyRegisteredFiles == null ? [...filesState] : alreadyRegisteredFiles;
@@ -78,10 +73,13 @@ export default function Library(props) {
 
 
         /* Using the interval instead of a for loop is required since retrieving a file from an entry must be asynchronous
-        and this part requires the files retrieval to be complete. There is probably a better way to do it and will further be investigated.
+        and this part requires the files retrieval to be complete.
         
         The FileSystemFileEntry file does not return a promise but takes one or two callbacks as parameters[1]. Because of that,
         using the interval is a solution to prevent having an exponential number of function calls as the files are processed.
+
+        In addition, for the files informations to be updated live (meaning not having to wait for the whole batch to finish), the 
+        filesState cannot be updated concurrently, otherwise some of the files information is lost.
         
         [1] https://developer.mozilla.org/en-US/docs/Web/API/FileSystemFileEntry*/
         var scanInterval = setInterval(async () => {
@@ -168,7 +166,7 @@ export default function Library(props) {
 
         for (var i = 0; i < filesState.length; i++) {
             var buffer = await filesState[i].arrayBuffer();
-            var response = await fetch(process.env.NODE_ENV == "development" ? "http://localhost:8080/api/v1/files/create/" + buffer.byteLength : "/api/v1/create/" + buffer.byteLength, { mode: "cors", method: "POST" })
+            var response = await fetch(process.env.NODE_ENV === "development" ? "http://localhost:8080/api/v1/files/create/" + buffer.byteLength : "/api/v1/create/" + buffer.byteLength, { mode: "cors", method: "POST" })
             var fileId = await response.text();
 
             var numIter = Math.ceil(buffer.byteLength / CHUNK_SIZE);
@@ -178,7 +176,7 @@ export default function Library(props) {
                 tState[filesState[i].webkitRelativePath + filesState[i].name].progress = Math.round(j / numIter * 10000) / 100;
                 setTracks(tState);
                 
-                var reqUrl = process.env.NODE_ENV == "development" ? "http://localhost:8080/api/v1/files/add/" : "/api/v1/files/add/";
+                var reqUrl = process.env.NODE_ENV === "development" ? "http://localhost:8080/api/v1/files/add/" : "/api/v1/files/add/";
 
                 response = await fetch(reqUrl + fileId + "/" + j * CHUNK_SIZE, {
                     headers: {
@@ -197,7 +195,7 @@ export default function Library(props) {
             }
 
             console.log("file successfully uploaded");
-            response = await fetch(process.env.NODE_ENV == "development" ? "http://localhost:8080/api/v1/files/close/" + fileId : "/api/v1/files/close/" + fileId, { method: "POST" });
+            response = await fetch(process.env.NODE_ENV === "development" ? "http://localhost:8080/api/v1/files/close/" + fileId : "/api/v1/files/close/" + fileId, { method: "POST" });
         }
 
         setUploading(false);

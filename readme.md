@@ -16,22 +16,30 @@ There are two ways to use Aneirin:
 Section to be written
 
 ### Todos
-Aneirin is far from complete. You can find what is left to be done for v1 in this section:
+Aneirin is far from complete. You can find what is left to be done for v1.0.0 in this section:
 
+- [ ] Write the "Run Aneirin with docker
 - [ ] Write the "Run Aneirin from source" section in the readme  
 
 Server: 
-- [x] Endpoint to receive file chunk and write it to the file
-- [ ] Function to process uploaded files
-- [ ] Endpoint to start processing uploaded files
-- [ ] Add authentication Endpoint
-- [ ] Add Playlists
+
+- [x] Function to process uploaded files
+- [ ] Endpoints:
+  - [x] Endpoint to receive file chunk and write it to the file
+  - [ ] Endpoint to start processing uploaded files
+  - [ ] Endpoint to retrieve tracks information
+  - [ ] Endpoint to tracks/album/artists in the database
+  - [ ] Endpoint to retrieve MPD
+  - [ ] Endpoint to retrieve a track's segment
 - [ ] Add support for MySql/MariaDB
 
 Admin client:
 - [x] Add upload file functionality with http
-- [ ] Add authentication page
-- [ ] Add user management page
+- [ ] Add Album management page
+- [ ] Add Artists management page
 
 Player client:
-- [ ] Everything so far
+- [ ] Basic player UI
+- [ ] Support for endpoints
+  - [ ] To search for tracks/albums/artists
+  - [ ] To start playing music

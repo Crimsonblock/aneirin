@@ -4,15 +4,11 @@ import Setup from "./setup.mjs";
 import { writeFileSync, mkdirSync, openSync, closeSync, writeSync } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { LOG_LEVEL, log } from "./utils.mjs";
 
 
 
-const LOG_LEVEL = {
-    ERROR: 1,
-    WARN: 2,
-    INFO: 3,
-    DEBUG: 4
-}
+
 
 // A function to handle the errors of the json bodyParser
 function handleJsonError(err, req, res, next) {
@@ -84,18 +80,18 @@ class Apiv1 {
 
         // This endpoints adds data to the created file
         filesController.post("/add/:fileId/:offset", bodyParser.raw({inflate:true, limit: "1mB"}), (req, res) => {
-            this.log(LOG_LEVEL.DEBUG, "writing file");
+            log(LOG_LEVEL.DEBUG, "writing file", this.config);
             
             // Checks if the file exists
             if (this.files[req.params.fileId] == null) {
                 res.status(404);
                 res.send("File not found");
-                this.log(LOG_LEVEL.WARN, "Could not find file with id " + req.params.fileId);
+                log(LOG_LEVEL.WARN, "Could not find file with id " + req.params.fileId, this.config);
             }
             
             // Writes the file and sends the response 
             writeFileSync(this.files[req.params.fileId], req.body, {offset: req.params.offset});
-            this.log(LOG_LEVEL.DEBUG, "file written");
+            log(LOG_LEVEL.DEBUG, "file written", this.config);
             res.send("ok");
         });
 
@@ -121,8 +117,8 @@ class Apiv1 {
             } catch (e) {
                 res.status(500);
                 res.send("Internal server error");
-                this.log(LOG_LEVEL.ERROR, "Error while closing an opened file");
-                this.log(LOG_LEVEL.ERROR, e);
+                log(LOG_LEVEL.ERROR, "Error while closing an opened file", this.config);
+                log(LOG_LEVEL.ERROR, e, this.config);
             }
         });
 
@@ -238,25 +234,6 @@ class Apiv1 {
         return setup;
     }
 
-
-    log(logLevel = -1, msg) {
-        if (logLevel < this.config.log_level)
-            return;
-        switch (logLevel) {
-            case LOG_LEVEL.ERROR:
-                console.log("\x1b[31m<Error> ", msg, "\x1b[0m")
-                break;
-            case LOG_LEVEL.WARN:
-                console.log("\x1b[33m<Warning> ", msg, "\x1b[0m")
-                break;
-            case LOG_LEVEL.INFO:
-                console.log("\x1b[32m<Info> ", msg, "\x1b[0m")
-                break;
-            case LOG_LEVEL.DEBUG:
-                console.log("\x1b[37m<Debug> ", msg, "\x1b[0m")
-                break;
-        }
-    }
 
     closeOpenFiles() {
         Object.keys(this.files).forEach(key => {

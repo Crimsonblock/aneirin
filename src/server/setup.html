@@ -220,7 +220,7 @@
 
             // Checks if the database needs to be initialized
             if (document.location.pathname != "/setup/account") {
-                // Gets the type of the database
+                
                 var payload = {type: document.querySelector("#dbSelector").value}; 
 
                 // Gets additional database information such as the file location or the database credentials
@@ -256,8 +256,6 @@
             var res = await fetch(location.protocol+"//"+location.host+"/api/v1/setup/initUser", data);
 
             if(res.ok) location.href = location.protocol+"//"+location.host;
-
-
         });
 
 

@@ -15,6 +15,7 @@ export default function Library(props) {
     const [dragged, setDragged] = useState(false);
     const [filesState, setFiles] = useState([]);
     const [tracksState, setTracks] = useState({});
+    const [uploading, setUploading] = useState(false);
 
 
 
@@ -32,17 +33,13 @@ export default function Library(props) {
     const getFilesFromUnscannedEntries = (entries, alreadyRegisteredFiles = null, alreadyRegisteredTracks = null) => {
         if (entries.length === 0) return;
         const stateFiles = alreadyRegisteredFiles == null ? [...filesState] : alreadyRegisteredFiles;
-        // console.log(stateFiles);
 
-        // Retrieves the individual files
         var fileEntries = entries.filter(entry => entry.isFile);
         var filesAdded = 0;
 
-        // Adds scanning state variables to check for completion
         var additionDone = false;
         var scanningDone = false;
 
-        // Gets the File objects and push it to the the array
         var files = [];
         fileEntries.forEach(entry => {
             entry.file(file => {
@@ -52,7 +49,8 @@ export default function Library(props) {
         });
 
 
-
+        /*For some reason, it is required to set those functions to set the various variables,
+        as when accessing it within the scanInterval, otherwise they are undefined.*/
         const getFiles = () => {
             return files;
         }
@@ -66,27 +64,32 @@ export default function Library(props) {
 
         var tracks = alreadyRegisteredTracks == null ? { ...tracksState } : alreadyRegisteredTracks;
         const setFileMetadata = (index, metadata) => {
-            // Here we copy the tracks object rather than modifying it so the setTracks sees a new object
-            // and not the one currently in state. This results in React re-rendering the component. 
-            // Reusing the same object would be more memory efficient, but update would not be shown live
+            /*Here we copy the tracks object rather than modifying it so the setTracks sees a new object
+            and not the one currently in state. This results in React re-rendering the component. 
+            Reusing the same object would be more memory efficient, but update would not be shown live*/
             var t = { ...tracks }
             t[files[index].webkitRelativePath + files[index].name] = metadata;
             tracks = t;
             setTracks(t);
         }
 
-        // Sets the scan variables and starts the interval to scan the individual files
         var filesScanned = 0;
         var scanning = false;
+
+
+        /* Using the interval instead of a for loop is required since retrieving a file from an entry must be asynchronous
+        and this part requires the files retrieval to be complete. There is probably a better way to do it and will further be investigated.
+        
+        The FileSystemFileEntry file does not return a promise but takes one or two callbacks as parameters[1]. Because of that,
+        using the interval is a solution to prevent having an exponential number of function calls as the files are processed.
+        
+        [1] https://developer.mozilla.org/en-US/docs/Web/API/FileSystemFileEntry*/
         var scanInterval = setInterval(async () => {
             var files = getFiles();
 
-            // If all the files were added to the files and another interval is not busy with the state variable
             if (additionDone && filesScanned < getFiles().length && !scanning) {
-                // Sets the scanning variable
                 scanning = true;
 
-                // Retrieves the metadata and adds it to the tracks
                 try {
                     var metadata = await getMetadata(files[filesScanned]);
                     setFileMetadata(filesScanned, metadata);
@@ -98,31 +101,27 @@ export default function Library(props) {
                     setF(files);
                     setFiles(stateFiles.concat(files));
                 }
-
-                // // Sets the new state variable and unset the scanning variable.
                 scanning = false;
             }
 
-            // Adds the files in the state variable 
             else if (!additionDone && typeof (files) !== "undefined" && filesAdded >= fileEntries.length) {
                 files = stateFiles.concat(files);
                 additionDone = true;
                 setFiles(files);
             }
 
-            // If all the files were scanned, stops the interval
             else if (filesScanned >= files.length) {
                 scanningDone = true;
                 clearInterval(scanInterval);
             }
         }, 100);
 
-        // Retrieves the directories
+
         var directoryReaders = entries.filter(entry => entry.isDirectory).map(entry => entry.createReader());
         var scannedFolders = 0;
         var unscannedEntries = [];
 
-        // Starts a scan job to enumerate the sub directories
+        
         directoryReaders.forEach(reader => {
             reader.readEntries(entries => {
                 entries.forEach(entry => {
@@ -132,6 +131,10 @@ export default function Library(props) {
             })
         });
 
+        /*An interval is used to wait for the processes to be finished again. It is more important here,
+        as it prevents the function to be called an exponential amount of time. The thought behind it was
+        that calling the function less often with more data instead of once per directory can prevent a stack overflow
+        when someone with a big music library drops the whole library at once*/
         var folderInterval = setInterval(() => {
             if (scannedFolders >= directoryReaders.length && additionDone && scanningDone) {
                 clearInterval(folderInterval);
@@ -161,16 +164,23 @@ export default function Library(props) {
 
     const confirmHandler = async () => {
         const CHUNK_SIZE = 1000000;
+        setUploading(true);
 
         for (var i = 0; i < filesState.length; i++) {
             var buffer = await filesState[i].arrayBuffer();
-            var response = await fetch(BASE_URL + "/api/v1/files/create/" + buffer.byteLength, { mode: "cors", method: "POST" })
+            var response = await fetch(process.env.NODE_ENV == "development" ? "http://localhost:8080/api/v1/files/create/" + buffer.byteLength : "/api/v1/create/" + buffer.byteLength, { mode: "cors", method: "POST" })
             var fileId = await response.text();
 
-            for (var j = 0; j <= Math.ceil(buffer.byteLength/CHUNK_SIZE); j++) {
-                console.log("Request ", j, "of ", Math.ceil(buffer.byteLength / CHUNK_SIZE));
+            var numIter = Math.ceil(buffer.byteLength / CHUNK_SIZE);
 
-                response = await fetch(BASE_URL + "/api/v1/files/add/" + fileId + "/" + j * CHUNK_SIZE, {
+            for (var j = 0; j <= numIter; j++) {
+                var tState = { ...tracksState };
+                tState[filesState[i].webkitRelativePath + filesState[i].name].progress = Math.round(j / numIter * 10000) / 100;
+                setTracks(tState);
+                
+                var reqUrl = process.env.NODE_ENV == "development" ? "http://localhost:8080/api/v1/files/add/" : "/api/v1/files/add/";
+
+                response = await fetch(reqUrl + fileId + "/" + j * CHUNK_SIZE, {
                     headers: {
                         "Content-Type": "application/octet-stream"
                     },
@@ -179,17 +189,23 @@ export default function Library(props) {
                     body: buffer.slice(j * CHUNK_SIZE, (j + 1) * CHUNK_SIZE)
                 });
 
-                
-                if(!response.ok)
+
+                if (!response.ok) {
+                    setUploading(false);
                     return;
+                }
             }
 
             console.log("file successfully uploaded");
-            response = await fetch(BASE_URL + "/api/v1/files/close/" + fileId, { method: "POST" });
-
-            console.log(response.ok);
-
+            response = await fetch(process.env.NODE_ENV == "development" ? "http://localhost:8080/api/v1/files/close/" + fileId : "/api/v1/files/close/" + fileId, { method: "POST" });
         }
+
+        setUploading(false);
+    }
+
+    const cancelHandler = () => {
+        setFiles([]);
+        setTracks({});
     }
 
 
@@ -243,7 +259,7 @@ export default function Library(props) {
                 </div>
             </div>
 
-            <Modal title="Track upload" confirm="Upload" confirmHandler={confirmHandler} cancel="Cancel" ref={modalRef}>
+            <Modal title="Track upload" confirm="Upload" disableConfirm={uploading} disableCancel={uploading} confirmHandler={confirmHandler} cancelHandler={cancelHandler} cancel="Cancel" ref={modalRef}>
                 <div className={filesState.length === 0 ? "dragNDropZone" : ""}
                     onDragOver={(event) => { event.preventDefault(); setDragged(true); }}
                     onDragExit={(event) => { event.preventDefault(); setDragged(false); }}
@@ -263,6 +279,7 @@ export default function Library(props) {
                                                 <td>Artist</td>
                                                 <td>Album</td>
                                                 <td>Size (MB)</td>
+                                                {uploading ? <td>Upload Progress</td> : ""}
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -282,6 +299,28 @@ export default function Library(props) {
                                                             tracksState[file.webkitRelativePath + file.name].common.album}
                                                     </td>
                                                     <td>{Math.round(file.size * 100 / (1024 ** 2)) / 100}</td>
+                                                    {uploading
+                                                        ?
+                                                        typeof (tracksState[file.webkitRelativePath + file.name]) != "undefined" ?
+                                                            typeof (tracksState[file.webkitRelativePath + file.name].progress) == "undefined" ?
+                                                                <td>
+                                                                    <div style={{ width: "10vw", height: "1rem", position: "relative", overflow: "hidden", borderRadius: "1rem", textAlign: "center" }}>
+                                                                        <div style={{ backgroundColor: "green", width: "0%", height: "100%", position: "relative" }}>
+
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                : <td>
+                                                                    <div>
+                                                                        <div style={{ width: "10vw", height: "1rem", position: "relative", overflow: "hidden", borderRadius: "1rem", textAlign: "center" }}>
+                                                                            <div style={{ backgroundColor: "green", width: tracksState[file.webkitRelativePath + file.name].progress + "%", height: "100%", position: "relative" }}>
+
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                            : ""
+                                                        : ""}
                                                 </tr>
                                             )}
                                         </tbody>

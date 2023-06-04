@@ -1,7 +1,6 @@
 import process from "node:process";
 import express from "express";
 import Setup from "./setup.mjs";
-import http from "http";
 import bodyParser from "body-parser";
 import cors from "cors";
 import path from "node:path";
@@ -9,7 +8,7 @@ import path from "node:path";
 const VERSION = "0.1.0";
 
 import apiv1 from "./apiv1.mjs";
-import LibraryManager from "./libraryManager.mjs";
+import LibraryManager from "./LibraryManager.mjs";
 
 process.env.DATA_DIR = typeof(process.env.DATA_DIR) == "undefined" ? "/data" : process.env.DATA_DIR;
 const config = Setup.readConfig();
@@ -99,11 +98,12 @@ app.get("/stop", (req, res)=>{
 })
 ;
 
-// Node handlers for signals
+
 process.on('SIGTERM', stopApp);
 process.on("SIGINT", stopApp);
 
-// Gracefully shuts down the app
+
+
 function stopApp() {
     console.log("Stopping");
     server.close();
@@ -112,29 +112,7 @@ function stopApp() {
 }
 
 
-// resources.libraryManager.scanDataDirectory();
 
-
-// const server = http.createServer(app);
-
-
-// // Socket io related stuff
-// const io = typeof(process.env.DEV)=="undefined" ? new Server(server) : 
-// // Development environment set, allows connections from the UI development server
-// new Server(server, {
-//     cors: {
-//         origin:"http://localhost:3000"
-//     }
-// });
-
-// io.on("connection", (socket)=>{
-//     socket.on("sendMusic", (data)=>{
-//         console.log("SocketData: ");
-//         console.log(data);
-//     });
-// });
-
-
-// server = app.listen(port, ()=>{
-//     console.log("Application started");
-// });
+var server = app.listen(port, ()=>{
+    console.log("Application started");
+});

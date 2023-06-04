@@ -15,16 +15,20 @@ export default forwardRef((props, ref) => {
 
     var confirmBtn = null;
     var cancelBtn = null;
-    
+
     if (typeof (props.confirm) != "undefined")
-        confirmBtn = <button className="btn confirm" onClick={props.confirmHandler}>{props.confirm}</button>;
+        confirmBtn = props.disableConfirm ?
+            <button className="btn confirm" disabled onClick={props.confirmHandler}>{props.confirm}</button>
+            : <button className="btn confirm" onClick={props.confirmHandler}>{props.confirm}</button>;
 
     if (typeof (props.cancel) != "undefined")
-        cancelBtn = <button className="btn cancel" onClick={props.cancelHandler}>{props.cancel}</button>;
+        cancelBtn = props.disableCancel ?
+            <button className="btn cancel" disabled onClick={() => { setDisplay(false); if(typeof(props.cancelHandler) != "undefined") props.cancelHandler() }}>{props.cancel}</button>
+            : <button className="btn cancel" onClick={() => { setDisplay(false); if(typeof(props.cancelHandler) != "undefined") props.cancelHandler() }}>{props.cancel}</button>;
 
     return (
-        <div className={displayed ? "modalContainer" : "modalContainer hidden"} onClick={() => { setDisplay(false) }}>
-            <div className="card modal" onClick={e => { e.stopPropagation() }}>
+        <div className={displayed ? "modalContainer" : "modalContainer hidden"}>
+            <div className="card modal">
                 {title}
                 {props.children}
                 <div className="btnContainer">

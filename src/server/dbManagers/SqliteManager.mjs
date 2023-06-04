@@ -42,13 +42,14 @@ class SqliteManager extends DbManager {
             )');
             // Creates the albums table
             this.db.run('\
-            CREATE TABLE IF NOT EXISTS "albums"(\
-                "id" INTEGER NOT NULL UNIQUE, \
-                "name" TEXT NOT NULL, \
-                "artistId" INTEGER NOT NULL, \
-                "cover" TEXT, \
-                PRIMARY KEY("id" AUTOINCREMENT), \
-                CONSTRAINT "albumsArtistId" FOREIGN KEY("artistId") REFERENCES artists(id)\
+            CREATE TABLE IF NOT EXISTS"albums" (\
+                "id"	INTEGER NOT NULL UNIQUE,\
+                "name"	TEXT NOT NULL,\
+                "artistId"	INTEGER NOT NULL,\
+                "cover"	TEXT,\
+                CONSTRAINT "uniqueAlbum" UNIQUE("name","artistId"),\
+                CONSTRAINT "albumsArtistId" FOREIGN KEY("artistId") REFERENCES "artists"("id"),\
+                PRIMARY KEY("id" AUTOINCREMENT)\
             )');
             // Creates the tracks table
             this.db.run('\
@@ -125,74 +126,65 @@ class SqliteManager extends DbManager {
      *  Fields marked by * are optionals.
      */
     async addNewTrack(infos) {
-        return new Promise((resolve, reject) =>{
-
-       
-        // Checks if all mandatory informations are provided
-        if (typeof (infos.title) == "undefined") reject("Title is required to add a new track");
-        if (typeof (infos.artistId) == "undefined") reject("Artist id is required to add a new track");
-        if (typeof (infos.albumId) == "undefined") reject("Album id is required to add a new track");
-        if (typeof (infos.trackNr) == "undefined") reject("Track number is required to add a new track");
-        if (typeof (infos.genre) == "undefined") reject("Genre is required to add a new track");
+        return new Promise((resolve, reject) => {
+            if (typeof (infos.title) == "undefined") reject("Title is required to add a new track");
+            if (typeof (infos.artistId) == "undefined") reject("Artist id is required to add a new track");
+            if (typeof (infos.albumId) == "undefined") reject("Album id is required to add a new track");
+            if (typeof (infos.trackNr) == "undefined") reject("Track number is required to add a new track");
+            if (typeof (infos.genre) == "undefined") reject("Genre is required to add a new track");
 
 
-        var genresId = [];
+            var genresId = [];
 
-        // Checks the type of the genres and adds the genre to the db if required
-        if (typeof (infos.genre) == "string") {
-            // Gets the id from the db
-            this.db.prepare("SELECT id FROM genres WHERE name=?").get(infos.genre, (err, row) => {
-                if(err) reject(err);
+            
+            if (typeof (infos.genre) == "string") {
 
-                // If the row does not exist
-                if (typeof (row) == "undefined") {
-                    // Execute those statements one after the other
-                    this.db.serialize(() => {
-                        // Inserts the genre in the genres table
-                        this.db.prepare("INSERT INTO genres(name) VALUES(?)").run(infos.genre).finalize();
-                        // Gets the id of the newly inserted genre
-                        this.db.prepare("SELECT id FROM genres WHERE name=?").get(infos.genre, (err, row2) => {
-                            if(err) reject(err);
-                            genresId.push(row2.id);
-                        }).finalize();
-                    });
-                }
-                else {
-                    // Gets the id from the genres table and adds it to the genresId in the db
-                    genresId.push(row.id);
-                }
+                this.db.prepare("SELECT id FROM genres WHERE name=?").get(infos.genre, (err, row) => {
+                    if (err) reject(err);
 
-            }).finalize();
-
-        }
-        else if (typeof (infos.genre) == "object") {
-            var stmt = this.db.prepare("SELECT id FROM genres WHERE name=?");
-            infos.genre.forEach(genre => {
-                stmt.get(genre, row => {
                     if (typeof (row) == "undefined") {
                         this.db.serialize(() => {
-                            this.db.prepare("INSERT INTO genres(name) VALUES(?)").run(genre).finalize();
-                            stmt.get(genre, row2 => {
+                            this.db.prepare("INSERT INTO genres(name) VALUES(?)").run(infos.genre).finalize();
+                            this.db.prepare("SELECT id FROM genres WHERE name=?").get(infos.genre, (err2, row2) => {
+                                if (err2) reject(err2);
                                 genresId.push(row2.id);
-                            });
+                            }).finalize();
                         });
                     }
                     else {
                         genresId.push(row.id);
                     }
+
+                }).finalize();
+
+            }
+            else if (typeof (infos.genre) == "object") {
+                var stmt = this.db.prepare("SELECT id FROM genres WHERE name=?");
+                infos.genre.forEach(genre => {
+                    stmt.get(genre, row => {
+                        if (typeof (row) == "undefined") {
+                            this.db.serialize(() => {
+                                this.db.prepare("INSERT INTO genres(name) VALUES(?)").run(genre).finalize();
+                                stmt.get(genre, row2 => {
+                                    genresId.push(row2.id);
+                                });
+                            });
+                        }
+                        else {
+                            genresId.push(row.id);
+                        }
+                    });
                 });
-            });
-            stmt.finalize();
-        }
-        else reject("Genres must be a string or an array of strings");
+                stmt.finalize();
+            }
+            else reject("Genres must be a string or an array of strings");
 
-        // Genres ids retrieval complete
 
-        this.db.prepare("INSERT INTO tracks(title, artistId, albumId, composer, trackNr, diskNr, year, path) VALUES(?,?,?,?,?,?,?,?)")
-            .run(infos.title, infos.artistId, infos.albumId, infos.composer, infos.trackNr, infos.diskNr, infos.year, infos.path, err=>{
-                if(err) reject(err);
-                resolve();
-            });
+            this.db.prepare("INSERT INTO tracks(title, artistId, albumId, composer, trackNr, diskNr, year, path) VALUES(?,?,?,?,?,?,?,?)")
+                .run(infos.title, infos.artistId, infos.albumId, infos.composer, infos.trackNr, infos.diskNr, infos.year, infos.path, err => {
+                    if (err) reject(err);
+                    resolve();
+                });
         })
 
     }
@@ -207,7 +199,26 @@ class SqliteManager extends DbManager {
      * @returns an array containing all the tracks matching the search criteria.
      */
     getTracks(criteria) {
-        throw new Error("getTrack not implemented");
+        return new Promise((resolve, reject) => {
+            var searchS = "SELECT * FROM tracks WHERE ";
+            var searchV = [];
+t
+            Object.keys(criteria).forEach(k => {
+                searchS += searchV.length > 0 ? " AND " + k + "=?" : k + "=?";
+                searchV.push(criteria[k]);
+            });
+
+            var stmt = this.db.prepare(searchS, (err) => {
+                if (err != null) console.log("An error occured while getting the albums: ", err);
+            });
+            stmt.get(searchV, (err, row) => {
+
+                if (err) {
+                    reject(err);
+                }
+                resolve(row);
+            });
+        });
     }
 
     /**
@@ -266,17 +277,14 @@ class SqliteManager extends DbManager {
      */
     async getArtist(criteria, callback = null) {
         return new Promise(async (resolve, reject) => {
-            // Creates the base query string and sets the values.
             var searchS = "SELECT * FROM artists WHERE ";
             var searchV = [];
 
-            // Constructs the WHERE clauses with the keys of the criteria object
             Object.keys(criteria).forEach(k => {
                 searchS += searchV.length > 0 ? " AND " + k + "=?" : k + "=?";
                 searchV.push(criteria[k]);
             });
 
-            // Executes the statement and calls the callback with the new value.
             var stmt = this.db.prepare(searchS, (err) => {
                 if (err != null) {
                     console.log("An error occured while getting the artists: ", err);
@@ -312,25 +320,21 @@ class SqliteManager extends DbManager {
      * @param infos A JSON object containing the information to be updated, in addition of a mandatory "id" field.
      */
     updateArtist(infos) {
-        // Checks if the id field is provided and of corect type
         if (typeof (infos.id) == "undefined") throw new Error("Id not provided");
         if (typeof (infos.id) != "number") throw new Error("Invalid ID type");
 
-        // Creates the base UPDATE clause.
         var updateS = "UPDATE artists SET ";
         var updateV = [];
 
-        // Sets the new values based on the keys. The id key is ignored as it is used for the clause.
         Object.keys(infos).forEach(k => {
             if (k == "id") return;
             updateS += updateV.length > 0 ? ", " + k + "=?" : k + "=?";
             updateV.push(infos[k]);
         });
 
-        // Checks if any field was provided
+
         if (updateV.length == 0) throw new Error("Need one field to update");
 
-        // Creates the WHERE clause for the update and executes the statement
         updateS += " WHERE id=?";
         updateV.push(infos.id);
 
@@ -368,13 +372,11 @@ class SqliteManager extends DbManager {
      */
     async addNewAlbum(infos) {
         return new Promise((resolve, reject) => {
-            // Checks if the required fields were provided
             if (typeof (infos.artistId) == "undefined")
                 reject("Artist id not provided");
             if (typeof (infos.name) == "undefined")
                 reject("Album name not provided");
 
-            // Prepares the statement and executes it with the correct values
             this.db.prepare("INSERT INTO albums(name, artistId, cover) VALUES (?,?,?)")
                 .run(infos.name, infos.artistId, typeof (infos.coverPath) == "undefined" ? null : infos.coverPath, (err) => {
                     if (err) reject(err);
@@ -391,24 +393,21 @@ class SqliteManager extends DbManager {
      * an "id" field. 
      */
     async getAlbum(criteria) {
-        return new Promise((resolve, reject)=> {
-            // Creates the base query string and sets the values.
+        return new Promise((resolve, reject) => {
             var searchS = "SELECT * FROM albums WHERE ";
             var searchV = [];
 
-            // Constructs the WHERE clauses with the keys of the criteria object
             Object.keys(criteria).forEach(k => {
                 searchS += searchV.length > 0 ? " AND " + k + "=?" : k + "=?";
                 searchV.push(criteria[k]);
             });
 
-            // Executes the statement and calls the callback with the new value.
             try {
                 var stmt = this.db.prepare(searchS, (err) => {
                     if (err != null) console.log("An error occured while getting the albums: ", err);
                 });
                 stmt.get(searchV, (err, row) => {
-                    if(err){
+                    if (err) {
                         reject(err);
                     }
                     resolve(row);
@@ -428,25 +427,20 @@ class SqliteManager extends DbManager {
      * in addition of a mandatory "id" field.
      */
     updateAlbum(infos) {
-        // Checks if the id field is provided and of corect type
         if (typeof (infos.id) == "undefined") throw new Error("Id not provided");
         if (typeof (infos.id) != "number") throw new Error("Invalid ID type");
 
-        // Creates the base UPDATE clause.
         var updateS = "UPDATE albums SET ";
         var updateV = [];
 
-        // Sets the new values based on the keys. The id key is ignored as it is used for the clause.
         Object.keys(infos).forEach(k => {
             if (k == "id") return;
             updateS += updateV.length > 0 ? ", " + k + "=?" : k + "=?";
             updateV.push(infos[k]);
         });
 
-        // Checks if any field was provided
         if (updateV.length == 0) throw new Error("Need one field to update");
 
-        // Creates the WHERE clause for the update and executes the statement
         updateS += " WHERE id=?";
         updateV.push(infos.id);
 

@@ -20,7 +20,6 @@ const VERSION = "0.1.0";
 */
 
 
-// Reads the config from the config file.
 export function readConfig() {
     try {
         return JSON.parse(readFileSync(path.join(process.env.DATA_DIR, "/config.json")));
@@ -40,7 +39,7 @@ export function init(config) {
          *      for the new DBMS. The information should be retrieved from the config file.
          */
 
-        // Checks for the registered db type and loads the db manager.
+
         switch (config.db_type) {
             case "sqlite":
                 var db = new SqliteManager();
@@ -48,20 +47,20 @@ export function init(config) {
                 return db;
         }
     }
+
+    
+
     else {
-        // Setup the data directories
         config.data_in = typeof (process.env.DATA_IN) == "undefined" ? "/in" : process.env.DATA_IN;
         config.data_out = typeof (process.env.DATA_OUT) == "undefined" ? "/out" : process.env.DATA_OUT;
         config.data_shared = typeof (process.env.DATA_SHARED) == "undefined" ? "/shared" : process.env.DATA_SHARED;
         config.data_dir = typeof(process.env.DATA_DIR == "undefined") ? "/data" : process.env.DATA_DIR;
-        config.log_level = typeof (process.env.LOG_LEVEL) == "undefined" ?  3 : process.env.LOG_LEVEL;
 
-        // Initializes the database variable
+        config.log_level = typeof (process.env.LOG_LEVEL) == "undefined" ?  3 : process.env.LOG_LEVEL;
+        config.codecs = ["-c:a:0 flac", "-c:a:1 aac -b:a 128k"];
+
         var db = -1;
 
-
-        // Checks for the DB config in the environment variables and if found, returns a db object with the correct
-        // configuration.
 
         /**
          * To add db support:
@@ -78,6 +77,7 @@ export function init(config) {
          *          You need to set the "db" variable to the database manager object. It is advised to make a helper function as it will be called from
          *          several places
          */
+
         switch (process.env.DB_TYPE) {
             case "sqlite":
                 if (typeof (process.env.DB_FILE) != "undefined") {

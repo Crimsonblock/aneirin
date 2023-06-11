@@ -179,7 +179,7 @@ class Apiv1 {
                         config.installStage = 1;
                         config.db_type = req.body.type;
                         config.db_file = req.body.file;
-                        writeFileSync(path.join(process.env.DATA_DIR, "/config.json"), JSON.stringify(config, null, "\t"));
+                        writeFileSync(path.join(this.config.DATA_DIR, "/config.json"), JSON.stringify(config, null, "\t"));
                         resources.db = db;
                     }
                 }
@@ -226,7 +226,7 @@ class Apiv1 {
                     resources.db.addUser(req.body.username, req.body.password, 1);
                     delete config.installStage;
                     config.installed = true;
-                    writeFileSync(path.join(process.env.DATA_DIR, "/config.json"), JSON.stringify(config, null, "\t"));
+                    writeFileSync(path.join(this.config.DATA_DIR, "/config.json"), JSON.stringify(config, null, "\t"));
                 } catch (e) {
                     res.status(500);
                     res.send("Internal server error");
@@ -251,9 +251,8 @@ class Apiv1 {
             log(LOG_LEVEL.DEBUG, req.params.trackId);
             res.setHeader("Content-Type", "application/json");
             res.send(await this.resources.db.getTracksInfo(req.params.trackId).catch(e => log(LOG_LEVEL.ERROR, e)));
-        });
-
-        lib.post("/tracksInfo", bodyParser.json(), handleJsonError, async (req, res)=>{
+        })
+        .post("/tracksInfo", bodyParser.json(), handleJsonError, async (req, res)=>{
             log(LOG_LEVEL.DEBUG, req.body);
             res.setHeader("Content-Type", "application/json");
             res.send(await this.resources.db.getTracksInfo(req.body).catch(e=>{
@@ -263,8 +262,7 @@ class Apiv1 {
                 res.send("Internal server error");
             }));
         })
-
-        lib.get("/trackDescription/:trackId", async(req, res) =>{
+        .get("/trackDescription/:trackId", async(req, res) =>{
             log(LOG_LEVEL.DEBUG, "Getting track descriptor of track with id "+req.params.trackId);
             var info = await this.resources.db.getTracksInfo(req.params.trackId);
             info = info[0];
@@ -273,9 +271,11 @@ class Apiv1 {
 
             res.header("Content-Type", "application/xml");
             res.send(readFileSync(path.join(this.config.data_dir, "library", info.albumArtist, info.albumName, info.title.replace(/\//g, "_"), LibraryManager.cleanString(info.title, false)+".mpd")))
+        })
+        .get("/trackFragment/:trackId/:streamId/:segmentId", async(req, res)=>{
+            
         });
 
-        
 
 
         return lib;

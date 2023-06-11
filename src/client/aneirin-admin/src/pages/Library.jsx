@@ -181,6 +181,7 @@ export default function Library(props) {
 
                 var reqUrl = process.env.NODE_ENV === "development" ? "http://localhost:8080/api/v1/files/add/" : "/api/v1/files/add/";
 
+                // j*CHUNK_SIZE is the offset in the file to write the data.
                 response = await fetch(reqUrl + fileId + "/" + j * CHUNK_SIZE, {
                     headers: {
                         "Content-Type": "application/octet-stream"

@@ -28,14 +28,14 @@ Server:
   - [x] Endpoint to receive file chunk and write it to the file
   - [x] Endpoint to start processing uploaded files
   - [ ] Endpoint to remove tracks
-  - [ ] Endpoint to update tracks
+  - [ ] Endpoint to update a track
   - [ ] Endpoint to remove artists and related work
   - [ ] Endpoint to update an artist
-- [ ] Player endpoints:
+- [ ] Basic Player endpoints:
   - [x] Endpoint to retrieve tracks information
   - [ ] Endpoint to search for tracks/album/artists in the database
   - [x] Endpoint to retrieve MPD
-  - [ ] Endpoint to retrieve a track's segment
+  - [x] Endpoint to retrieve a track's segment
 - [ ] Add support for MySql/MariaDB
 
 Admin client:

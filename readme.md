@@ -24,11 +24,16 @@ Aneirin is far from complete. You can find what is left to be done for v1.0.0 in
 Server: 
 
 - [x] Function to process uploaded files
-- [ ] Endpoints:
+- [ ] Admin Endpoints:
   - [x] Endpoint to receive file chunk and write it to the file
-  - [ ] Endpoint to start processing uploaded files
+  - [x] Endpoint to start processing uploaded files
+  - [ ] Endpoint to remove tracks
+  - [ ] Endpoint to update tracks
+  - [ ] Endpoint to remove artists and related work
+  - [ ] Endpoint to update an artist
+- [ ] Player endpoints:
   - [ ] Endpoint to retrieve tracks information
-  - [ ] Endpoint to tracks/album/artists in the database
+  - [ ] Endpoint to search for tracks/album/artists in the database
   - [ ] Endpoint to retrieve MPD
   - [ ] Endpoint to retrieve a track's segment
 - [ ] Add support for MySql/MariaDB

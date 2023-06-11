@@ -4,6 +4,8 @@ import SqliteManager from "./dbManagers/SqliteManager.mjs";
 import { createHash } from "node:crypto";
 import path from "node:path";
 
+import { Log } from "./utils.mjs";
+
 export default {
     "readConfig": readConfig,
     "init": init
@@ -33,6 +35,8 @@ export function readConfig() {
 // Initializes the database system.
 export function init(config) {
     if (config.installed || config.installStage == 1) {
+        Log.setConfig(config);
+
         /**
          * To add db support: 
          *      add a new case to the switch structure, to create the DB manager 
@@ -56,8 +60,10 @@ export function init(config) {
         config.data_shared = typeof (process.env.DATA_SHARED) == "undefined" ? "/shared" : process.env.DATA_SHARED;
         config.data_dir = typeof(process.env.DATA_DIR == "undefined") ? "/data" : process.env.DATA_DIR;
 
-        config.log_level = typeof (process.env.LOG_LEVEL) == "undefined" ?  3 : process.env.LOG_LEVEL;
+        config.log_level = typeof (process.env.LOG_LEVEL) == "undefined" ?  5 : process.env.LOG_LEVEL;
         config.codecs = ["-c:a:0 flac", "-c:a:1 aac -b:a 128k"];
+
+        Log.setConfig(config);
 
         var db = -1;
 

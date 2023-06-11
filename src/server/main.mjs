@@ -9,6 +9,7 @@ const VERSION = "0.1.0";
 
 import apiv1 from "./apiv1.mjs";
 import LibraryManager from "./LibraryManager.mjs";
+import log, {LOG_LEVEL} from "./utils.mjs";
 
 process.env.DATA_DIR = typeof(process.env.DATA_DIR) == "undefined" ? "/data" : process.env.DATA_DIR;
 const config = Setup.readConfig();
@@ -41,7 +42,6 @@ PORT -> The port the server must listen to
 EXPERIMENTAL -> USED FOR DEVELOPMENT ONLY! Allows to run raw db queries (which is unsafe!). Should never be set to true in a production environment.
 */
 
-console.log("[index.mjs - 38] TEST ENVIRONMENT VARIABLES SET. REMEMBER TO REMOVE BEFORE DEPLOYMENT");
 process.env.DB_TYPE = "sqlite";
 process.env.DB_FILE = "/data/aneirin.db";
 process.env.USERNAME = "username";
@@ -52,6 +52,10 @@ process.env.EXPERIMENTAL = true;
 const resources = {};
 resources.db = Setup.init(config);
 resources.libraryManager = new LibraryManager(config, resources);
+
+
+log( LOG_LEVEL.WARN, "[index.mjs - 45] TEST ENVIRONMENT VARIABLES SET. REMEMBER TO REMOVE BEFORE DEPLOYMENT");
+
 
 // Initiates the app and checks if the port was set through the environment variable
 const app = express();
@@ -105,7 +109,7 @@ process.on("SIGINT", stopApp);
 
 
 function stopApp() {
-    console.log("Stopping");
+    log(LOG_LEVEL.INFO, "Stopping application");
     server.close();
     api.closeOpenFiles();
     process.exit(0);
@@ -114,5 +118,5 @@ function stopApp() {
 
 
 var server = app.listen(port, ()=>{
-    console.log("Application started");
+    log(LOG_LEVEL.INFO, "Application started");
 });

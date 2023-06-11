@@ -4,7 +4,7 @@ import Setup from "./setup.mjs";
 import { writeFileSync, mkdirSync, openSync, closeSync, writeSync } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { LOG_LEVEL, log } from "./utils.mjs";
+import log, { LOG_LEVEL} from "./utils.mjs";
 
 
 
@@ -44,6 +44,7 @@ class Apiv1 {
         // Creates the setup api
         router.use("/setup", this.createSetupApi(this.config, this.resources));
         router.use("/files", this.createFilesApi(this.config));
+        router.use("/lib", this.createLibraryApi(this.config));
 
         // Prevents the non existing api endpoints to return a non-api response
         router.use("/*", (req, res)=>{
@@ -62,36 +63,32 @@ class Apiv1 {
 
         // The endpoint to create the incoming file
         filesController.post("/create/:size", (req, res) => {
-            // Creates the file where the unprocessed files will be stored
             mkdirSync(TO_BE_PROCESSED, { recursive: true });
 
-            // Creates a new file UUID, to prevent closing random files with random numbers
             var fileId = randomUUID();
 
-            // Opens a file and pre-allocates the size 
             var fd = openSync(path.join(TO_BE_PROCESSED, fileId), "w");
             writeSync(fd, "ok", Math.max(0, req.params.size - 2));
 
-            // Stores the file descriptor in the holder
+            
             this.files[fileId] = fd;
             res.send(fileId);
-        })
+            log(LOG_LEVEL.DEBUG, "Created file with id " + fileId);
+        });
 
 
         // This endpoints adds data to the created file
         filesController.post("/add/:fileId/:offset", bodyParser.raw({inflate:true, limit: "1mB"}), (req, res) => {
-            log(LOG_LEVEL.DEBUG, "writing file", this.config);
             
             // Checks if the file exists
             if (this.files[req.params.fileId] == null) {
                 res.status(404);
                 res.send("File not found");
-                log(LOG_LEVEL.WARN, "Could not find file with id " + req.params.fileId, this.config);
+                log(LOG_LEVEL.WARN, "Could not find file with id " + req.params.fileId);
             }
             
             // Writes the file and sends the response 
             writeFileSync(this.files[req.params.fileId], req.body, {offset: req.params.offset});
-            log(LOG_LEVEL.DEBUG, "file written", this.config);
             res.send("ok");
         });
 
@@ -117,13 +114,24 @@ class Apiv1 {
             } catch (e) {
                 res.status(500);
                 res.send("Internal server error");
-                log(LOG_LEVEL.ERROR, "Error while closing an opened file", this.config);
-                log(LOG_LEVEL.ERROR, e, this.config);
+                log(LOG_LEVEL.ERROR, "Error while closing an opened file");
+                log(LOG_LEVEL.ERROR, e);
             }
+
+            log(LOG_LEVEL.DEBUG, "Closed file with id " + req.params.fileId);
         });
 
         filesController.post("/startScanning", (req, res) =>{
             res.send("Ok");
+        });
+
+        filesController.get("/isTranscoding", (req, res)=>{
+            res.send(typeof(this.config.transcoding) == "undefined" ? false : this.config.transcoding);
+        });
+
+        filesController.post("/startTranscoding", (req, res)=>{
+            res.send("ok");
+            this.resources.libraryManager.processDataDirectory();
         });
 
 
@@ -148,7 +156,7 @@ class Apiv1 {
                 res.set("Content-Type", "application/json");
                 res.status(403);
                 res.send("Forbidden");
-                console.log("User tried to install a new DB on a system that is already installed");
+                log(LOG_LEVEL.WARN, "User tried to install a new DB on a system that is already installed");
             }
             else {
 
@@ -163,7 +171,7 @@ class Apiv1 {
                     else if (db == -1) {
                         res.status(500);
                         res.send("An error occurred while installing the database.");
-                        console.log("The database " + req.body.type + " is not supported");
+                        log(LOG_LEVEL.ERROR, "The database " + req.body.type + " is not supported");
                         return;
                     }
                     else {
@@ -178,7 +186,8 @@ class Apiv1 {
                 catch (e) {
                     res.status(500);
                     res.send("Internal server error");
-                    console.log(e);
+                    log(LOG_LEVEL.ERROR, "An error occurred while initializing the database");
+                    log(LOG_LEVEL.ERROR, e);
                 }
 
                 res.status(200);
@@ -193,13 +202,13 @@ class Apiv1 {
                 res.set("Content-Type", "application/json");
                 res.status(403);
                 res.send("Forbidden");
-                console.log("User tried to initialize a user to a system that is already fully installed");
+                log(LOG_LEVEL.WARN, "User tried to initialize a user to a system that is already fully installed");
             }
             else if (config.installStage != 1) {
                 res.set("Content-Type", "application/json");
                 res.status(403);
                 res.send("Forbidden");
-                console.log("User tried to initialize a user with an unitialized database. Initialize the db first.");
+                log(LOG_LEVEL.WARN, "User tried to initialize a user with an unitialized database. Initialize the db first.");
             }
             else {
                 if (typeof (req.body.username) == "undefined") {
@@ -221,8 +230,8 @@ class Apiv1 {
                 } catch (e) {
                     res.status(500);
                     res.send("Internal server error");
-                    console.log("Error encountered during default user creation");
-                    console.log(e);
+                    log(LOG_LEVEL.ERROR, "Error encountered during default user creation");
+                    console.log(LOG_LEVEL.ERROR, e);
                     return;
                 }
 
@@ -234,6 +243,18 @@ class Apiv1 {
         return setup;
     }
 
+    
+    createLibraryApi(config){
+        var lib = Router();
+        
+        lib.get("/trackInfo/:trackId", (req, res)=>{
+
+        });
+
+
+        return lib;
+    }
+
 
     closeOpenFiles() {
         Object.keys(this.files).forEach(key => {
@@ -241,7 +262,8 @@ class Apiv1 {
                 closeSync(this.files[key]);
             }
             catch (e) {
-                console.log(e);
+                log(LOG_LEVEL.ERROR, "An error occurred while closing a file: ");
+                log(LOG_LEVEL.ERROR, e);
             }
         });
     }

@@ -45,10 +45,8 @@ class SqliteManager extends DbManager {
             CREATE TABLE IF NOT EXISTS"albums" (\
                 "id"	INTEGER NOT NULL UNIQUE,\
                 "name"	TEXT NOT NULL,\
-                "artistId"	INTEGER NOT NULL,\
                 "cover"	TEXT,\
-                CONSTRAINT "uniqueAlbum" UNIQUE("name","artistId"),\
-                CONSTRAINT "albumsArtistId" FOREIGN KEY("artistId") REFERENCES "artists"("id"),\
+                CONSTRAINT "uniqueAlbum" UNIQUE("name"),\
                 PRIMARY KEY("id" AUTOINCREMENT)\
             )');
             // Creates the tracks table
@@ -63,10 +61,11 @@ class SqliteManager extends DbManager {
                 "diskNr"	INTEGER,\
                 "year"	INTEGER,\
                 "path"	TEXT NOT NULL,\
+                "duration"	INTEGER NOT NULL,\
                 CONSTRAINT "uniqueTrack" UNIQUE("title","albumId","artistId"),\
+                PRIMARY KEY("id" AUTOINCREMENT),\
                 CONSTRAINT "trackArtistId" FOREIGN KEY("artistId") REFERENCES "artists"("id"),\
-                CONSTRAINT "trackAlbumId" FOREIGN KEY("albumId") REFERENCES "albums"("id"),\
-                PRIMARY KEY("id" AUTOINCREMENT)\
+                CONSTRAINT "trackAlbumId" FOREIGN KEY("albumId") REFERENCES "albums"("id")\
             )');
             // Creates the genres table
             this.db.run('\
@@ -132,11 +131,12 @@ class SqliteManager extends DbManager {
             if (typeof (infos.albumId) == "undefined") reject("Album id is required to add a new track");
             if (typeof (infos.trackNr) == "undefined") reject("Track number is required to add a new track");
             if (typeof (infos.genre) == "undefined") reject("Genre is required to add a new track");
+            if (typeof (infos.duration) == "undefined") reject("Missing track's duration")
 
 
             var genresId = [];
 
-            
+
             if (typeof (infos.genre) == "string") {
 
                 this.db.prepare("SELECT id FROM genres WHERE name=?").get(infos.genre, (err, row) => {
@@ -180,11 +180,28 @@ class SqliteManager extends DbManager {
             else reject("Genres must be a string or an array of strings");
 
 
-            this.db.prepare("INSERT INTO tracks(title, artistId, albumId, composer, trackNr, diskNr, year, path) VALUES(?,?,?,?,?,?,?,?)")
-                .run(infos.title, infos.artistId, infos.albumId, infos.composer, infos.trackNr, infos.diskNr, infos.year, infos.path, err => {
+            this.db.prepare("INSERT INTO tracks(title, artistId, albumId, composer, trackNr, diskNr, year, path, duration) VALUES(?,?,?,?,?,?,?,?,?)")
+                .run(infos.title, infos.artistId, infos.albumId, infos.composer, infos.trackNr, infos.diskNr, infos.year, infos.path, infos.duration, err => {
                     if (err) reject(err);
-                    resolve();
+
+
+                    this.db.prepare("SELECT * FROM tracks WHERE title=? AND albumId=? AND artistId=?")
+                        .get(infos.title, infos.albumId, infos.artistId, (err, row) => {
+                            if (err) reject(err);
+                            var stm = this.db.prepare("INSERT INTO trackGenres(trackId, genreId) VALUES (?,?)");
+                            genresId.forEach(id => {
+                                stm.run(row.id, id, err => {
+                                    if (err) reject(err);
+                                });
+                            });
+                            stm.finalize();
+                            resolve();
+
+                        }).finalize();
                 });
+
+            // TODO: add genres insertion in the db.
+
         })
 
     }
@@ -202,7 +219,6 @@ class SqliteManager extends DbManager {
         return new Promise((resolve, reject) => {
             var searchS = "SELECT * FROM tracks WHERE ";
             var searchV = [];
-t
             Object.keys(criteria).forEach(k => {
                 searchS += searchV.length > 0 ? " AND " + k + "=?" : k + "=?";
                 searchV.push(criteria[k]);
@@ -220,6 +236,7 @@ t
             });
         });
     }
+
 
     /**
      * Updates a track with the provided information. The function needs to throw an error with the message "Invalid id provided" if no id was provided
@@ -239,6 +256,40 @@ t
     removeTrack(trackId) {
         throw new Error("removeTrack not implemented");
     }
+
+    
+
+    async getTrackInfo(trackId) {
+        return new Promise((resolve, reject) => {
+            if (typeof (trackId) != "object") reject("TrackIds must be of type array");
+
+            var stmt = this.db.prepare(`SELECT tracks.title, 
+                tracks.trackNr, 
+                tracks.diskNr, 
+                tracks.year, 
+                tracks.duration, 
+                albums.id AS albumId, 
+                albums.name AS albumName, 
+                albums.cover, 
+                artists.id AS artistId, 
+                artists.name AS artistName 
+            FROM tracks 
+            LEFT JOIN albums ON tracks.albumId=albums.id
+            LEFT JOIN artists ON tracks.artistId=artists.id
+            WHERE tracks.id=?
+            ORDER BY albums.id, tracks.trackNr;`);
+
+            stmt.get(id, (err, trackInfo) => {
+                if (err) reject(err);
+                resolve(trackInfo);
+            })
+
+            stmt.finalize();
+        });
+
+    }
+
+
 
 
     /**
@@ -372,13 +423,11 @@ t
      */
     async addNewAlbum(infos) {
         return new Promise((resolve, reject) => {
-            if (typeof (infos.artistId) == "undefined")
-                reject("Artist id not provided");
             if (typeof (infos.name) == "undefined")
                 reject("Album name not provided");
 
-            this.db.prepare("INSERT INTO albums(name, artistId, cover) VALUES (?,?,?)")
-                .run(infos.name, infos.artistId, typeof (infos.coverPath) == "undefined" ? null : infos.coverPath, (err) => {
+            this.db.prepare("INSERT INTO albums(name, cover) VALUES (?,?)")
+                .run(infos.name, typeof (infos.coverPath) == "undefined" ? null : infos.coverPath, (err) => {
                     if (err) reject(err);
                     resolve();
                 });
@@ -484,6 +533,9 @@ t
     removeUser(userId) {
         this.db.prepare("DELETE FROM users WHERE id=?").run(userId);
     }
+
+
+
 
     /**
      * A function for experimental developement that execute raw queries. The function needs to throw an error with the message "Not in experimental mode" if the

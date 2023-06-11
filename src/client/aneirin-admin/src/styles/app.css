@@ -83,6 +83,8 @@ h1, p{
     cursor:pointer;
 }
 
+
+
 .btn:hover{
     box-shadow: 0 .15rem .5rem rgba(128, 128, 128, 1);
 }
@@ -103,6 +105,20 @@ h1, p{
 .btn:hover:after{
     opacity:0.3;
 }
+
+.btn:disabled{
+    background-color: darkgray!important;
+    cursor: default;
+}
+
+.btn:disabled:hover{
+    box-shadow: 0 .15rem .5rem rgba(128, 128, 128, .7);
+}
+
+.btn:disabled:hover:after{
+    opacity: 0;
+}
+
 
 .btn:active:after{
     background-color: white;

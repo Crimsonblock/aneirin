@@ -7,16 +7,18 @@ import * as buffer from "buffer";
 window.Buffer = buffer.Buffer;
 
 
-// This variable is used to be able to use the development server.
-const BASE_URL = "http://localhost:8080";
-
-
 export default function Library(props) {
     const [dragged, setDragged] = useState(false);
     const [filesState, setFiles] = useState([]);
     const [tracksState, setTracks] = useState({});
     const [uploading, setUploading] = useState(false);
+    const [isServerBusy, setServerBusy] = useState(false);
 
+
+    var serverBusyUrl = process.env.NODE_ENV === "development" ? "http://localhost:8080/api/v1/files/isTranscoding" : "/api/v1/files/isTranscoding";
+    fetch(serverBusyUrl).then(async res => {
+        setServerBusy(await res.json());
+    }).catch(e => console.log("Could not contact server"));
 
 
     const modalRef = useRef(null);
@@ -119,7 +121,7 @@ export default function Library(props) {
         var scannedFolders = 0;
         var unscannedEntries = [];
 
-        
+
         directoryReaders.forEach(reader => {
             reader.readEntries(entries => {
                 entries.forEach(entry => {
@@ -167,6 +169,7 @@ export default function Library(props) {
         for (var i = 0; i < filesState.length; i++) {
             var buffer = await filesState[i].arrayBuffer();
             var response = await fetch(process.env.NODE_ENV === "development" ? "http://localhost:8080/api/v1/files/create/" + buffer.byteLength : "/api/v1/create/" + buffer.byteLength, { mode: "cors", method: "POST" })
+                .catch(e => console.log("An error occurred while creating the file", e));
             var fileId = await response.text();
 
             var numIter = Math.ceil(buffer.byteLength / CHUNK_SIZE);
@@ -175,7 +178,7 @@ export default function Library(props) {
                 var tState = { ...tracksState };
                 tState[filesState[i].webkitRelativePath + filesState[i].name].progress = Math.round(j / numIter * 10000) / 100;
                 setTracks(tState);
-                
+
                 var reqUrl = process.env.NODE_ENV === "development" ? "http://localhost:8080/api/v1/files/add/" : "/api/v1/files/add/";
 
                 response = await fetch(reqUrl + fileId + "/" + j * CHUNK_SIZE, {
@@ -185,7 +188,7 @@ export default function Library(props) {
                     mode: "cors",
                     method: "POST",
                     body: buffer.slice(j * CHUNK_SIZE, (j + 1) * CHUNK_SIZE)
-                });
+                }).catch(e => console.log("An error occurred while uploading the file", e));
 
 
                 if (!response.ok) {
@@ -199,6 +202,20 @@ export default function Library(props) {
         }
 
         setUploading(false);
+
+        reqUrl = process.env.NODE_ENV === "development" ? "http://localhost:8080/api/v1/files/startTranscoding/" : "/api/v1/files/startTranscoding/";
+        await fetch(reqUrl, { method: "POST" }).catch("Could not start the transcoding operation on the server.");
+
+        var serverBusyInterval = setInterval(() => {
+            fetch(serverBusyUrl).then(async res => {
+                var serverBusy = await res.json();
+                if (!serverBusy) {
+                    setServerBusy(serverBusy);
+                    clearInterval(serverBusyInterval);
+                }
+            }).catch(e => console.log("Could not contact server"));
+        }, 1000);
+
     }
 
     const cancelHandler = () => {
@@ -220,7 +237,7 @@ export default function Library(props) {
                     </p>
 
                     <input type="text" id="searchLibrary" placeholder="Search" />
-                    <button className="btn circle" id="addTrack" onClick={showModal}><span>+</span></button>
+                    <button className="btn circle" disabled={isServerBusy} title={isServerBusy ? "The server is busy converting the audio tracks" : ""} id="addTrack" onClick={showModal}><span>+</span></button>
                     <table>
                         <thead>
                             <tr>
@@ -257,7 +274,7 @@ export default function Library(props) {
                 </div>
             </div>
 
-            <Modal title="Track upload" confirm="Upload" disableConfirm={uploading} disableCancel={uploading} confirmHandler={confirmHandler} cancelHandler={cancelHandler} cancel="Cancel" ref={modalRef}>
+            <Modal title="Track upload" confirm="Upload" disableConfirm={uploading || isServerBusy} disableCancel={uploading} confirmHandler={confirmHandler} cancelHandler={cancelHandler} cancel="Cancel" ref={modalRef}>
                 <div className={filesState.length === 0 ? "dragNDropZone" : ""}
                     onDragOver={(event) => { event.preventDefault(); setDragged(true); }}
                     onDragExit={(event) => { event.preventDefault(); setDragged(false); }}

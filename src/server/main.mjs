@@ -106,8 +106,6 @@ app.get("/stop", (req, res)=>{
 process.on('SIGTERM', stopApp);
 process.on("SIGINT", stopApp);
 
-
-
 function stopApp() {
     log(LOG_LEVEL.INFO, "Stopping application");
     server.close();

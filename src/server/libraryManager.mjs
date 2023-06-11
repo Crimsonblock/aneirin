@@ -85,7 +85,7 @@ class LibraryManager {
             var artist = metadata.common.artist.split(",")[0].split("/")[0].replace(/[ \t]+$/i, ""); //  <- This regex removes the trailing whitespaces/tab
             artist = await this.getArtistCreateIfNotExists(artist);
 
-            var trackDir = path.join(albumDir.replace(/:/g, "-"), "/", metadata.common.title);
+            var trackDir = path.join(albumDir.replace(/:/g, "-"), "/", metadata.common.title.replace(/\//g, "_"));
             var trackInfos = {
                 title: metadata.common.title,
                 artistId: artist.id,
@@ -155,9 +155,10 @@ class LibraryManager {
 
 
     transcodeFile(file, title, dir, container) {
+        log(LOG_LEVEL.DEBUG, dir);
         mkdirSync(dir, { recursive: true });
 
-        var cmd = "cd " + this.cleanString(dir) + " && ffmpeg -loglevel quiet -i " + file + " -strict -2 -f dash -dash_segment_type mp4"
+        var cmd = "cd " + LibraryManager.cleanString(dir) + " && ffmpeg -loglevel quiet -i " + file + " -strict -2 -f dash -dash_segment_type mp4"
 
 
         const LOSSLESS = container.toLowerCase().includes("flac") || container.toLowerCase().includes("alac") || container.toLowerCase().includes("wave");
@@ -171,14 +172,14 @@ class LibraryManager {
             cmd += " -map 0:a:0 " + this.config.codecs[i];
         }
 
-        cmd += " " + this.cleanString(title, false) + ".mpd";
+        cmd += " " + LibraryManager.cleanString(title, false) + ".mpd";
         
         execSync(cmd);
 
     }
 
 
-    cleanString(str, isDir = true) {
+    static cleanString(str, isDir = true) {
         str = str.replace(/'/g, "\\'")
             .replace(/ /g, "\\ ")
             .replace(/\)/g, "\\)")

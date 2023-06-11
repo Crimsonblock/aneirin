@@ -257,39 +257,52 @@ class SqliteManager extends DbManager {
         throw new Error("removeTrack not implemented");
     }
 
-    
 
-    async getTrackInfo(trackId) {
+
+    async getTracksInfo(tracksId) {
+        if (typeof (tracksId) == "number") tracksId = [tracksId];
+        else if(typeof(tracksId) == "string") tracksId = [parseInt(tracksId)];
         return new Promise((resolve, reject) => {
-            if (typeof (trackId) != "object") reject("TrackIds must be of type array");
+            if (typeof (tracksId) != "object") reject("TrackIds must be of type array");
 
-            var stmt = this.db.prepare(`SELECT tracks.title, 
+            var stmt = `SELECT tracks.id AS trackId, tracks.title, 
                 tracks.trackNr, 
                 tracks.diskNr, 
                 tracks.year, 
                 tracks.duration, 
                 albums.id AS albumId, 
                 albums.name AS albumName, 
-                albums.cover, 
                 artists.id AS artistId, 
                 artists.name AS artistName 
             FROM tracks 
             LEFT JOIN albums ON tracks.albumId=albums.id
             LEFT JOIN artists ON tracks.artistId=artists.id
-            WHERE tracks.id=?
-            ORDER BY albums.id, tracks.trackNr;`);
+            WHERE tracks.id IN `;
 
-            stmt.get(id, (err, trackInfo) => {
+            var ids = "(" + tracksId[0];
+
+            for (var i = 1; i < tracksId.length; i++) {
+                ids += "," + tracksId[i];
+            }
+            ids += ") ";
+
+            stmt = stmt + ids + "ORDER BY albums.id, tracks.trackNr";
+
+
+            stmt = this.db.prepare(stmt);
+
+            stmt.all((err, val) => {
                 if (err) reject(err);
-                resolve(trackInfo);
-            })
+                resolve(val);
+            });
 
             stmt.finalize();
         });
-
     }
 
+    async getAllTracks(limit){
 
+    }
 
 
     /**
@@ -467,6 +480,19 @@ class SqliteManager extends DbManager {
             }
         });
 
+    }
+
+    async getAlbumArtist(id){
+        return new Promise((resolve, reject)=>{
+            if(typeof(id) != "number") reject("Id is not of type number");
+
+            this.db.prepare("select artists.name FROM artists LEFT JOIN tracks ON tracks.artistId=artists.id WHERE albumId=? ORDER BY tracks.trackNr LIMIT 1")
+            .get(id, (err, val) =>{
+                if(err) reject(err);
+                resolve(val.name);
+            })
+            .finalize();            
+        });
     }
 
     /**

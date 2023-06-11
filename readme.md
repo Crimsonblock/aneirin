@@ -9,7 +9,7 @@ The project is divided into 3 parts:
 ## How to run the project
 There are two ways to use Aneirin:
 - Using the container application
-- Running it from the source (see later section)
+- Running it from the source
 
 
 ### Run Aneirin from source
@@ -32,9 +32,9 @@ Server:
   - [ ] Endpoint to remove artists and related work
   - [ ] Endpoint to update an artist
 - [ ] Player endpoints:
-  - [ ] Endpoint to retrieve tracks information
+  - [x] Endpoint to retrieve tracks information
   - [ ] Endpoint to search for tracks/album/artists in the database
-  - [ ] Endpoint to retrieve MPD
+  - [x] Endpoint to retrieve MPD
   - [ ] Endpoint to retrieve a track's segment
 - [ ] Add support for MySql/MariaDB
 
@@ -42,6 +42,17 @@ Admin client:
 - [x] Add upload file functionality with http
 - [ ] Add Album management page
 - [ ] Add Artists management page
+- [ ] Functionalities:
+  - [ ] Retrieve tracks
+  - [ ] Display retrieved tracks
+  - [ ] Edit tracks infos
+  - [ ] Remove tracks in bulk
+  - [ ] Edit Artist
+  - [ ] Upload artist picture
+  - [ ] Remove artists in bulk
+  - [ ] Edit Album
+  - [ ] Upload album cover
+  - [ ] Remove Albums in bulk
 
 Player client:
 - [ ] Basic player UI

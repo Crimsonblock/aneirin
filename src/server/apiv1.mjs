@@ -1,11 +1,11 @@
 import bodyParser from "body-parser";
 import { Router } from "express";
 import Setup from "./setup.mjs";
-import { writeFileSync, mkdirSync, openSync, closeSync, writeSync } from "node:fs";
+import { writeFileSync, mkdirSync, openSync, closeSync, writeSync, readFileSync} from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import log, { LOG_LEVEL} from "./utils.mjs";
-
+import LibraryManager from "./LibraryManager.mjs";
 
 
 
@@ -247,14 +247,41 @@ class Apiv1 {
     createLibraryApi(config){
         var lib = Router();
         
-        lib.get("/trackInfo/:trackId", (req, res)=>{
-
+        lib.get("/trackInfo/:trackId", async(req, res)=>{
+            log(LOG_LEVEL.DEBUG, req.params.trackId);
+            res.setHeader("Content-Type", "application/json");
+            res.send(await this.resources.db.getTracksInfo(req.params.trackId).catch(e => log(LOG_LEVEL.ERROR, e)));
         });
+
+        lib.post("/tracksInfo", bodyParser.json(), handleJsonError, async (req, res)=>{
+            log(LOG_LEVEL.DEBUG, req.body);
+            res.setHeader("Content-Type", "application/json");
+            res.send(await this.resources.db.getTracksInfo(req.body).catch(e=>{
+                log(LOG_LEVEL.ERROR, "An error occurred while fetching infos of tracks: " + req.body.toString());
+                log(LOG_LEVEL.ERROR, e);
+                res.statusCode(500);
+                res.send("Internal server error");
+            }));
+        })
+
+        lib.get("/trackDescription/:trackId", async(req, res) =>{
+            log(LOG_LEVEL.DEBUG, "Getting track descriptor of track with id "+req.params.trackId);
+            var info = await this.resources.db.getTracksInfo(req.params.trackId);
+            info = info[0];
+
+            info.albumArtist = await this.resources.db.getAlbumArtist(info.albumId).catch(e=>log(LOG_LEVEL.ERROR, e));
+
+            res.header("Content-Type", "application/xml");
+            res.send(readFileSync(path.join(this.config.data_dir, "library", info.albumArtist, info.albumName, info.title.replace(/\//g, "_"), LibraryManager.cleanString(info.title, false)+".mpd")))
+        });
+
+        
 
 
         return lib;
     }
 
+    
 
     closeOpenFiles() {
         Object.keys(this.files).forEach(key => {

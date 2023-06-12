@@ -4,7 +4,7 @@ This project aspire to be a music streaming platform that is locally hosted on o
 The project is divided into 3 parts:
 - The server.
 - The admin platform where it is possible to manage the users and the library.
-- The player, where users will be able to play there music from.
+- The player, where users will be able to play their music from.
 
 ## How to run the project
 There are two ways to use Aneirin:

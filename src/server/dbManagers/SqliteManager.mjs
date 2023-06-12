@@ -3,6 +3,9 @@ import sqlite3 from "sqlite3";
 
 // TODO add Tags, playlists and maybe tokens table.
 
+const SEARCH_LIMIT = 5;
+
+
 class SqliteManager extends DbManager {
     constructor() {
         super();
@@ -105,8 +108,124 @@ class SqliteManager extends DbManager {
      * @returns an array of JSON object with the fields matching the criteria.
      *  e.g. 
      */
-    search(name) {
-        throw new Error("search not implemented");
+    async search(name) {
+
+        var flashName = "%" + name + "%";
+        var result = {
+            artists: [],
+            albums: [],
+            tracks: [],
+            playlist: [],
+            genres: []
+        };
+
+        return new Promise((resolve, reject) => {
+            var trackStmt = this.db.prepare(`SELECT tracks.id AS trackId, tracks.title, 
+                tracks.trackNr, 
+                tracks.diskNr, 
+                tracks.year, 
+                tracks.duration, 
+                albums.id AS albumId, 
+                albums.name AS albumName, 
+                artists.id AS artistId, 
+                artists.name AS artistName 
+            FROM tracks 
+            INNER JOIN albums ON tracks.albumId=albums.id
+            INNER JOIN artists ON tracks.artistId=artists.id 
+            WHERE tracks.title LIKE ?`);
+            trackStmt.all(flashName, async (err, res) => {
+                if (err) reject(err);
+                result.tracks = res;
+
+                var albumStmt = this.db.prepare(`SELECT A.year,
+                    A.albumId,
+                    A.albumName,
+                    json_group_array(DISTINCT B.artistId) as artistIds,
+                    json_group_array(DISTINCT B.artistName) as artistNames,
+                    json_group_array(DISTINCT C.trackTitle) as trackTitles,
+                    json_group_array(DISTINCT C.trackId) as trackIds
+                FROM 
+                (SELECT DISTINCT
+                    tracks.year, 
+                    albums.id AS albumId, 
+                    albums.name AS albumName
+                FROM tracks 
+                INNER JOIN albums ON tracks.albumId=albums.id
+                WHERE albumName like ?
+                ) as A, 
+                (SELECT DISTINCT artists.id as artistId,
+                    artists.name as artistName
+                FROM tracks
+                INNER JOIN albums ON tracks.albumId=albums.id
+                INNER JOIN artists ON tracks.artistId=artists.id
+                WHERE albums.name like ?
+                LIMIT `+SEARCH_LIMIT+`
+                ) AS B,
+                (SELECT DISTINCT tracks.title as trackTitle,
+                    tracks.id as trackId
+                FROM tracks
+                INNER JOIN albums ON tracks.albumId=albums.id
+                INNER JOIN artists ON tracks.artistId=artists.id
+                WHERE albums.name like ?
+                ORDER BY tracks.trackNr
+                LIMIT `+SEARCH_LIMIT+`)
+                AS C
+                GROUP BY A.albumId`);
+                albumStmt.all(flashName, flashName, flashName, (err, res) => {
+                    if (err) reject(err);
+                    result.albums = res;
+
+                    /*This query is split in A, B and C for to reasons:
+                        -it allows to order the tracks and albums in an arbitrary way 
+                            (e.g. by number of times listened to by the current user over the past month, year, ...).
+                        -it allows to limit the number of tracks/albums selected
+                    */
+
+                    var artistStmt = this.db.prepare(`SELECT A.id, 
+                        A.name, 
+                        A.picturePath,
+                        json_group_array(DISTINCT B.id) as trackIds,
+                        json_group_array(DISTINCT C.id) as albumIds
+                    FROM (
+                        SELECT * FROM artists
+                        WHERE artists.name LIKE ?
+                    ) AS A,
+                    (SELECT 
+                        tracks.id
+                    FROM tracks 
+                    LEFT JOIN artists ON tracks.artistId=artists.id
+                    WHERE artists.name LIKE ?
+                    ORDER BY tracks.trackNr
+                    LIMIT +`+ SEARCH_LIMIT + `
+                    ) as B,
+                    (
+                    SELECT DISTINCT albums.id FROM tracks
+                    INNER JOIN artists ON tracks.artistId=artists.id
+                    INNER JOIN albums ON tracks.albumId=albums.id
+                    WHERE artists.name LIKE ?
+                    LIMIT `+ SEARCH_LIMIT + `
+                    ) AS C
+                    GROUP BY a.id`)
+
+                    artistStmt.all(flashName, flashName, flashName, (err, res) => {
+                        if (err) reject(err);
+                        result.artists = res;
+
+                        var genresStmt = this.db.prepare("SELECT * FROM genres WHERE name LIKE ?");
+                        genresStmt.all(flashName, (err, res) => {
+                            if (err) reject(err);
+                            result.genres = res;
+                            resolve(result);
+                        });
+                    })
+                        .finalize();
+
+
+                }).finalize();
+
+            }).finalize();
+
+        });
     }
 
     /**
@@ -200,8 +319,6 @@ class SqliteManager extends DbManager {
                         }).finalize();
                 });
 
-            // TODO: add genres insertion in the db.
-
         })
 
     }
@@ -261,7 +378,7 @@ class SqliteManager extends DbManager {
 
     async getTracksInfo(tracksId) {
         if (typeof (tracksId) == "number") tracksId = [tracksId];
-        else if(typeof(tracksId) == "string") tracksId = [parseInt(tracksId)];
+        else if (typeof (tracksId) == "string") tracksId = [parseInt(tracksId)];
         return new Promise((resolve, reject) => {
             if (typeof (tracksId) != "object") reject("TrackIds must be of type array");
 
@@ -275,8 +392,8 @@ class SqliteManager extends DbManager {
                 artists.id AS artistId, 
                 artists.name AS artistName 
             FROM tracks 
-            LEFT JOIN albums ON tracks.albumId=albums.id
-            LEFT JOIN artists ON tracks.artistId=artists.id
+            INNER JOIN albums ON tracks.albumId=albums.id
+            INNER JOIN artists ON tracks.artistId=artists.id
             WHERE tracks.id IN `;
 
             var ids = "(" + tracksId[0];
@@ -300,7 +417,7 @@ class SqliteManager extends DbManager {
         });
     }
 
-    async getAllTracks(limit){
+    async getAllTracks(limit) {
 
     }
 
@@ -482,16 +599,16 @@ class SqliteManager extends DbManager {
 
     }
 
-    async getAlbumArtist(id){
-        return new Promise((resolve, reject)=>{
-            if(typeof(id) != "number") reject("Id is not of type number");
+    async getAlbumArtist(id) {
+        return new Promise((resolve, reject) => {
+            if (typeof (id) != "number") reject("Id is not of type number");
 
-            this.db.prepare("select artists.name FROM artists LEFT JOIN tracks ON tracks.artistId=artists.id WHERE albumId=? ORDER BY tracks.trackNr LIMIT 1")
-            .get(id, (err, val) =>{
-                if(err) reject(err);
-                resolve(val.name);
-            })
-            .finalize();            
+            this.db.prepare("select artists.name FROM artists INNER JOIN tracks ON tracks.artistId=artists.id WHERE albumId=? ORDER BY tracks.trackNr LIMIT 1")
+                .get(id, (err, val) => {
+                    if (err) reject(err);
+                    resolve(val.name);
+                })
+                .finalize();
         });
     }
 

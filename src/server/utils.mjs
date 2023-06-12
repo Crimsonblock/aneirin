@@ -17,19 +17,19 @@ export function log(logLevel = 1000, msg, config = null) {
         return;
     switch (logLevel) {
         case LOG_LEVEL.ERROR:
-            console.log("\x1b[31m<Error> ", msg, "\x1b[0m")
+            console.log("\x1b[31m[Error] ", msg, "\x1b[0m")
             break;
         case LOG_LEVEL.WARN:
-            console.log("\x1b[33m<Warning> ", msg, "\x1b[0m")
+            console.log("\x1b[33m[Warning] ", msg, "\x1b[0m")
             break;
         case LOG_LEVEL.INFO:
-            console.log("\x1b[32m<Info> ", msg, "\x1b[0m")
+            console.log("\x1b[32m[Info] ", msg, "\x1b[0m")
             break;
         case LOG_LEVEL.DEBUG:
-            console.log("\x1b[37m<Debug> ", msg, "\x1b[0m")
+            console.log("\x1b[37m[Debug] ", msg, "\x1b[0m")
             break;
         case LOG_LEVEL.DEBUG_WARN:
-            console.log("\x1b[33m<Debug> ", msg, "\x1b[0m")
+            console.log("\x1b[33m[Debug - Warning] ", msg, "\x1b[0m")
             break;
     }
 }
@@ -52,19 +52,19 @@ export class Log{
             return;
         switch (logLevel) {
             case LOG_LEVEL.ERROR:
-                console.log("\x1b[31m<Error> ", msg, "\x1b[0m")
+                console.log("\x1b[31m[Error] ", msg, "\x1b[0m")
                 break;
             case LOG_LEVEL.WARN:
-                console.log("\x1b[33m<Warning> ", msg, "\x1b[0m")
+                console.log("\x1b[33m[Warning] ", msg, "\x1b[0m")
                 break;
             case LOG_LEVEL.INFO:
-                console.log("\x1b[32m<Info> ", msg, "\x1b[0m")
+                console.log("\x1b[32m[Info] ", msg, "\x1b[0m")
                 break;
             case LOG_LEVEL.DEBUG:
-                console.log("\x1b[37m<Debug> ", msg, "\x1b[0m")
+                console.log("\x1b[37m[Debug] ", msg, "\x1b[0m")
                 break;
             case LOG_LEVEL.DEBUG_WARN:
-                console.log("\x1b[33m<Debug> ", msg, "\x1b[0m")
+                console.log("\x1b[33m[Debug - WARNING] ", msg, "\x1b[0m")
                 break;
         }
     }

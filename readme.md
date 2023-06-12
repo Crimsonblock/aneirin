@@ -34,9 +34,12 @@ Server:
   - [ ] Endpoint to update an artist
 - [ ] Basic Player endpoints:
   - [x] Endpoint to retrieve tracks information
-  - [ ] Endpoint to search for tracks/album/artists in the database
+  - [x] Endpoint to search for tracks/album/artists in the database
   - [x] Endpoint to retrieve MPD
   - [x] Endpoint to retrieve a track's segment
+  - [ ] Endpoint to retrieve album information
+  - [ ] Endpoint to retrieve Artist's information
+  - [ ] Endpoint to retrieve Genres informations
 - [ ] Add support for MySql/MariaDB
 
 Admin client:

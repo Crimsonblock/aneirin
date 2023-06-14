@@ -1,9 +1,11 @@
 import bodyParser from "body-parser";
 import { Router } from "express";
 import Setup from "./setup.mjs";
-import { writeFileSync, mkdirSync, openSync, closeSync, writeSync, readFileSync } from "node:fs";
+import { writeFileSync, mkdirSync, openSync, closeSync, writeSync, readFileSync, readSync, createReadStream, statSync } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { createGzip, createDeflate } from "node:zlib";
+
 import log, { LOG_LEVEL } from "./utils.mjs";
 
 const CHUNK_INDEX_LENGTH = 5;
@@ -39,6 +41,10 @@ class Apiv1 {
     getApi() {
         var router = Router();
 
+        // router.use((req, res, next) => {
+        //     log(LOG_LEVEL.DEBUG, "Getting " + req.method + " request on " + req.baseUrl + req.url.toString());
+        //     next();
+        // });
 
         // Creates the setup api
         router.use("/setup", this.createSetupApi(this.config, this.resources));
@@ -49,7 +55,7 @@ class Apiv1 {
         router.use("/*", (req, res) => {
             res.status(404);
             res.send("Not found");
-            log(LOG_LEVEL.DEBUG, "Api endpoint not found "+ req.baseUrl);
+            log(LOG_LEVEL.DEBUG, "Api endpoint not found " + req.baseUrl);
         });
 
         return router;
@@ -267,45 +273,107 @@ class Apiv1 {
                 var info = await this.resources.db.getTracksInfo(req.params.trackId);
                 info = info[0];
 
-                info.albumDir = await this.resources.db.getAlbumDir(info.albumId).catch(e => log(LOG_LEVEL.ERROR, e));
-
-                res.header("Content-Type", "application/xml");
-                res.send(readFileSync(path.join(this.config.data_dir, info.albumDir, info.title.replace(/\//g, "_"), info.title.replace(/\//g, "_") + ".mpd")));
-            })
-            .get("/track/:trackId/:filename", async (req, res) => {
-                var info = await this.resources.db.getTracksInfo(req.params.trackId);
-                if(info.length==0){
+                if (typeof (info) == "undefined") {
                     res.status(404);
                     res.send("Not found");
-                    log(LOG_LEVEL.WARN, "The track with id "+req.params.trackId+" could not be found");
+                    log(LOG_LEVEL.WARN, "Track with id " + req.params.trackId + " not found");
                     return;
                 }
 
-                info = info[0];
-
                 info.albumDir = await this.resources.db.getAlbumDir(info.albumId).catch(e => log(LOG_LEVEL.ERROR, e));
-                res.header("Content-Type", "application/octet-stream");
-                
-                log(LOG_LEVEL.DEBUG, "Getting file "+req.params.filename+" of track with id "+req.params.trackId);
 
-                
-                var filename = path.join(this.config.data_dir, info.albumDir, info.title.replace(/\//g, "_"), req.params.filename);
-
-                try{
-                    res.send(readFileSync(filename));
+                res.header("Content-Type", "application/xml");
+                try {
+                    res.send(readFileSync(path.join(this.config.data_dir, info.albumDir, info.title.replace(/\//g, "_") + ".mpd")));
                 }
-                catch(e){
-                    if(e.message.includes("ENOENT")) {
-                        log(LOG_LEVEL.ERROR, "The file "+filename+" was not found. If the file was requested by the client application, the file was either deleted or the Media Desription Presentation is corrupted. If it was requested by hand, the segment's id is out of range.");
-                    }
-                    else{
-                        log(LOG_LEVEL.ERROR, "An error occurred while retrieving the file "+filename);
-                        log(LOG_LEVEL.ERROR, e);
-                    }
+                catch (e) {
                     res.status(500);
                     res.send("Internal server error");
+                    log(LOG_LEVEL.ERROR, "An error occurred while opening the track descriptor of track : " + req.params.trackId);
+                    log(LOG_LEVEL.ERROR, e);
                 }
-            });
+
+            })
+            .get("/track/:trackId/:streamId", async (req, res) => {
+                if (typeof (req.headers.range) == "undefined") {
+                    res.status(400);
+                    res.send("Bad request");
+                    log(LOG_LEVEL.WARN, "No range header provided");
+                    return
+                }
+
+                if (!req.headers.range.includes("bytes")) {
+                    res.status(400);
+                    res.send("Bad request");
+                    log(LOG_LEVEL.WARN, "Range header is not of type bytes");
+                    return
+                }
+
+                var range = req.headers.range.replace(/bytes=/g, "").split("-");
+
+                log(LOG_LEVEL.DEBUG, "Getting track segment of track " + req.params.trackId + " for stream " + req.params.streamId + " for the range " + range[0] + "-" + range[1]);
+
+                var info = await this.resources.db.getTracksInfo(req.params.trackId);
+                info = info[0];
+
+                if (typeof (info) == "undefined") {
+                    res.status(404);
+                    res.send("Not found");
+                    log(LOG_LEVEL.WARN, "Track with id " + req.params.trackId + " not found");
+                    return;
+                }
+
+                info.albumDir = await this.resources.db.getAlbumDir(info.albumId).catch(e => log(LOG_LEVEL.ERROR, e));
+
+                try {
+                    var filePath = path.join(this.config.data_dir, info.albumDir, info.title.replace(/\//g, "_") + "-stream" + req.params.streamId + ".mp4");
+                    log(LOG_LEVEL.DEBUG, filePath);
+
+                    var file = createReadStream(filePath, { start: parseInt(range[0]), end: parseInt(range[1]) });
+
+                    var fileStats = statSync(filePath);
+                    var headers = {
+                        'Content-Range': `bytes ${range[0]}-${range[1]}/${fileStats.size}`,
+                        'Accept-Ranges': 'bytes',
+                        'Content-Length': range[1] - range[0] + 1,
+                        'Content-Type': 'audio/mp4'
+                    }
+
+                    if (req.headers["accept-encoding"].split(", ").includes("deflate")){
+                        log(LOG_LEVEL.DEBUG, "Deflating the file before piping it")
+                        var deflate = createDeflate();
+
+                        delete headers["Content-Length"];
+                        headers["Content-Encoding"] = "deflate";
+                        res.writeHead(206, headers);
+                        file.pipe(deflate).pipe(res);
+                    }
+                    else if (req.headers["accept-encoding"].split(", ").includes("gzip")){
+                        log(LOG_LEVEL.DEBUG, "GZipping the file before piping it")
+                        var gzip = createGzip();
+                        
+                        delete headers["Content-Length"];
+                        headers["Content-Encoding"] = "gzip";
+                        res.writeHead(206, headers);
+                        file.pipe(gzip).pipe(res);
+                    }
+                    else{
+                        log(LOG_LEVEL.DEBUG, req.headers);
+                        res.writeHead(206, headers);
+                        file.pipe(res);
+                    }
+                        
+
+                }
+                catch (e) {
+                    res.status(500);
+                    res.send("Internal server error");
+                    log(LOG_LEVEL.ERROR, "An error occurred while fetching segment of stream " + req.params.streamId + " of track with id " + req.params.trackId);
+                    log(LOG_LEVEL.ERROR, e);
+                }
+
+
+            })
 
 
 

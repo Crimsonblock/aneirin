@@ -1,8 +1,9 @@
-import { mkdirSync, readdirSync, rmSync, writeFileSync } from "fs";
+import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "fs";
 import { parseFile } from "music-metadata";
 import path from "path";
 import log, { LOG_LEVEL } from "./utils.mjs";
 import { execSync } from "child_process";
+import { XMLBuilder, XMLParser } from "fast-xml-parser";
 
 
 
@@ -133,7 +134,7 @@ class LibraryManager {
 
 
             log(LOG_LEVEL.DEBUG, "Starting transcoding file " + file);
-            this.transcodeFile(file, track.title, path.join(this.config.data_dir, album.path.replace(/:/g, "-"), "/", metadata.common.title.replace(/\//g, "_")), metadata.format.container);
+            this.transcodeFile(file, track.title, path.join(this.config.data_dir, album.path.replace(/:/g, "-"), "/"), metadata.format.container, track.id);
             log(LOG_LEVEL.DEBUG, "File transcoding completed");
 
             log(LOG_LEVEL.DEBUG, "Removing unnecessary files");
@@ -156,11 +157,16 @@ class LibraryManager {
 
 
 
-    transcodeFile(file, title, dir, container) {
-        log(LOG_LEVEL.DEBUG, dir);
-        mkdirSync(dir, { recursive: true });
+     async transcodeFile(file, title, dir, container, trackId) {
+        try{
+            mkdirSync(dir, { recursive: true });
+        }
+        catch(e){
+            log(LOG_LEVEL.DEBUG_WARN, "an error occurred while making directory "+dir);
+            log(LOG_LEVEL.DEBUG_WARN, err);
+        }
 
-        var cmd = "cd " + LibraryManager.cleanString(dir) + " && ffmpeg -loglevel quiet -i " + file + " -strict -2 -f dash -dash_segment_type mp4"
+        var cmd = "cd " + LibraryManager.cleanString(dir) + " && ffmpeg -loglevel quiet -i " + file + " -single_file 1 -strict -2 -f dash -dash_segment_type mp4"
 
 
         const LOSSLESS = container.toLowerCase().includes("flac") || container.toLowerCase().includes("alac") || container.toLowerCase().includes("wave");
@@ -177,6 +183,17 @@ class LibraryManager {
         cmd += " " + LibraryManager.cleanString(title, false) + ".mpd";
 
         execSync(cmd);
+
+        var parser = new XMLParser({ignoreAttributes: false});
+        var xml = parser.parse(readFileSync(path.join(dir, title.replace(/\//g, "_")+".mpd" )));
+
+        log(LOG_LEVEL.DEBUG, "Changing the BaseURL of the MPD");
+        for(i in xml.MPD.Period.AdaptationSet){
+            xml.MPD.Period.AdaptationSet[i].Representation.BaseURL = "/api/v1/lib/track/"+trackId+"/"+xml.MPD.Period.AdaptationSet[i].Representation["@_id"]
+        }
+
+        var builder = new XMLBuilder({ignoreAttributes: false, format:true, suppressBooleanAttributes:false});
+        writeFileSync(path.join(dir, title.replace(/\//g, "_")+".mpd" ), builder.build(xml));
 
     }
 

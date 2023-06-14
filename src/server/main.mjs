@@ -113,6 +113,6 @@ function stopApp() {
     process.exit(0);
 }
 
-// var server = app.listen(port, ()=>{
-//     log(LOG_LEVEL.INFO, "Application started");
-// });
+var server = app.listen(port, ()=>{
+    log(LOG_LEVEL.INFO, "Application started");
+});

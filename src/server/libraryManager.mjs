@@ -21,7 +21,7 @@ class LibraryManager {
         var files = readdirSync(path.join(this.config.data_dir, "/toBeProcessed"));
 
         for (var i = 0; i < files.length; i++) {
-            log(LOG_LEVEL.INFO, "Processing file " + (i+1) + " of " + files.length);
+            log(LOG_LEVEL.INFO, "Processing file " + (i + 1) + " of " + files.length);
             var file = path.join(this.config.data_dir, "/toBeProcessed", files[i]);
             log(LOG_LEVEL.DEBUG, "Scanning file " + file);
 
@@ -42,22 +42,23 @@ class LibraryManager {
                 }
             }
 
-            var albumArtist=null;
-            if(typeof (metadata.common.albumartist) == "undefined"){
+            var albumArtist = null;
+            if (typeof (metadata.common.albumartist) == "undefined") {
                 albumArtist = metadata.common.artist.split(",")[0].split("/")[0].replace(/[ \t]+$/i, "");
             }
-            else{
+            else {
                 albumArtist = metadata.common.albumartist.split(",")[0].split("/")[0].replace(/[ \t]+$/i, "");
             }
 
 
             albumArtist = await this.getArtistCreateIfNotExists(albumArtist);
-            var albumDir = path.join(this.config.data_dir, "/library/", albumArtist.name, "/", metadata.common.album);
+            
 
             var albumInfos = { name: metadata.common.album }
 
             var album = await this.resources.db.getAlbum(albumInfos);
             if (typeof (album) == "undefined") {
+                var albumDir = path.join("/library/", albumArtist.name, "/", metadata.common.album);
 
                 // If the track's file contains the cover picture of the album, retrieves it and writes it to a file in the album folder.
                 for (var i in metadata.common.picture) {
@@ -65,16 +66,19 @@ class LibraryManager {
                         mkdirSync(albumDir, { recursive: true });
                         if (metadata.common.picture[i].format.includes("jpeg")) {
                             writeFileSync(path.join(albumDir, "cover.jpg"), metadata.common.picture[i].data);
-                            albumInfos.coverPath=path.join(albumDir, "cover.jpg");
+                            albumInfos.coverPath = path.join(albumDir, "cover.jpg");
                         }
                         else {
                             log(LOG_LEVEL.WARN, "The format is of type " + metadata.common.picture[i].format + ", considering png");
                             writeFileSync(path.join(albumDir, "cover.png"), metadata.common.picture[i].data);
-                            albumInfos.coverPath=path.join(albumDir, "cover.png");
+                            albumInfos.coverPath = path.join(albumDir, "cover.png");
                         }
                         break;
                     }
                 }
+
+                
+                albumInfos.path = albumDir;
 
                 await this.resources.db.addNewAlbum(albumInfos);
                 delete albumInfos.coverPath;
@@ -85,7 +89,6 @@ class LibraryManager {
             var artist = metadata.common.artist.split(",")[0].split("/")[0].replace(/[ \t]+$/i, ""); //  <- This regex removes the trailing whitespaces/tab
             artist = await this.getArtistCreateIfNotExists(artist);
 
-            var trackDir = path.join(albumDir.replace(/:/g, "-"), "/", metadata.common.title.replace(/\//g, "_"));
             var trackInfos = {
                 title: metadata.common.title,
                 artistId: artist.id,
@@ -94,7 +97,6 @@ class LibraryManager {
                 diskNr: metadata.common.disk.no,
                 year: metadata.common.year,
                 genre: metadata.common.genre[0],
-                path: trackDir,
                 duration: Math.round(metadata.format.duration)
             };
 
@@ -123,7 +125,7 @@ class LibraryManager {
             });
 
             if (typeof (track) == "undefined") {
-                log(LOG_LEVEL.ERROR, "An Unable to retrieve the newly added track "+trackInfos.title);
+                log(LOG_LEVEL.ERROR, "An Unable to retrieve the newly added track " + trackInfos.title);
                 log(LOG_LEVEL.DEBUG_WARN, "The track is undefined");
                 log(LOG_LEVEL.DEBUG_WARN, trackInfos, this.config);
                 return;
@@ -131,7 +133,7 @@ class LibraryManager {
 
 
             log(LOG_LEVEL.DEBUG, "Starting transcoding file " + file);
-            this.transcodeFile(file, track.title, trackDir, metadata.format.container);
+            this.transcodeFile(file, track.title, path.join(this.config.data_dir, album.path.replace(/:/g, "-"), "/", metadata.common.title.replace(/\//g, "_")), metadata.format.container);
             log(LOG_LEVEL.DEBUG, "File transcoding completed");
 
             log(LOG_LEVEL.DEBUG, "Removing unnecessary files");
@@ -173,7 +175,7 @@ class LibraryManager {
         }
 
         cmd += " " + LibraryManager.cleanString(title, false) + ".mpd";
-        
+
         execSync(cmd);
 
     }

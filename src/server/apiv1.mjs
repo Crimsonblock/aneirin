@@ -49,6 +49,7 @@ class Apiv1 {
         router.use("/*", (req, res) => {
             res.status(404);
             res.send("Not found");
+            log(LOG_LEVEL.DEBUG, "Api endpoint not found "+ req.baseUrl);
         });
 
         return router;
@@ -261,20 +262,19 @@ class Apiv1 {
                     res.send("Internal server error");
                 }));
             })
-            .get("/trackDescription/:trackId", async (req, res) => {
+            .get("/track/:trackId", async (req, res) => {
                 log(LOG_LEVEL.DEBUG, "Getting track descriptor of track with id " + req.params.trackId);
                 var info = await this.resources.db.getTracksInfo(req.params.trackId);
                 info = info[0];
 
-                info.albumArtist = await this.resources.db.getAlbumArtist(info.albumId).catch(e => log(LOG_LEVEL.ERROR, e));
+                info.albumDir = await this.resources.db.getAlbumDir(info.albumId).catch(e => log(LOG_LEVEL.ERROR, e));
 
                 res.header("Content-Type", "application/xml");
-                res.send(readFileSync(path.join(this.config.data_dir, "library", info.albumArtist, info.albumName, info.title.replace(/\//g, "_"), info.title.replace(/\//g, "_") + ".mpd")))
+                res.send(readFileSync(path.join(this.config.data_dir, info.albumDir, info.title.replace(/\//g, "_"), info.title.replace(/\//g, "_") + ".mpd")));
             })
-            .get("/trackFragment/:trackId/:streamId/:segmentId", async (req, res) => {
+            .get("/track/:trackId/:filename", async (req, res) => {
                 var info = await this.resources.db.getTracksInfo(req.params.trackId);
                 if(info.length==0){
-                    console.log("COUCOU");
                     res.status(404);
                     res.send("Not found");
                     log(LOG_LEVEL.WARN, "The track with id "+req.params.trackId+" could not be found");
@@ -283,18 +283,13 @@ class Apiv1 {
 
                 info = info[0];
 
-                info.albumArtist = await this.resources.db.getAlbumArtist(info.albumId).catch(e => log(LOG_LEVEL.ERROR, e));
+                info.albumDir = await this.resources.db.getAlbumDir(info.albumId).catch(e => log(LOG_LEVEL.ERROR, e));
                 res.header("Content-Type", "application/octet-stream");
-
-                var chunkNr = req.params.segmentId;
-                for(var i=chunkNr.length; i<CHUNK_INDEX_LENGTH; i++){
-                    chunkNr = 0+chunkNr;
-                }
                 
-                log(LOG_LEVEL.DEBUG, "Getting chunk "+req.params.segmentId+" of track with id "+req.params.trackId+" for stream "+req.params.streamId);
+                log(LOG_LEVEL.DEBUG, "Getting file "+req.params.filename+" of track with id "+req.params.trackId);
 
-                var filename = req.params.segmentId == 0 ? "init-stream"+req.params.streamId+".m4s" : "chunk-stream"+req.params.streamId+"-"+chunkNr+".m4s";
-                filename = path.join(this.config.data_dir, "library", info.albumArtist, info.albumName, info.title.replace(/\//g, "_"),  filename);
+                
+                var filename = path.join(this.config.data_dir, info.albumDir, info.title.replace(/\//g, "_"), req.params.filename);
 
                 try{
                     res.send(readFileSync(filename));

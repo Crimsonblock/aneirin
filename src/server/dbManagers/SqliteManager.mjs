@@ -49,6 +49,7 @@ class SqliteManager extends DbManager {
                 "id"	INTEGER NOT NULL UNIQUE,\
                 "name"	TEXT NOT NULL,\
                 "cover"	TEXT,\
+                "path"	TEXT NOT NULL,\
                 CONSTRAINT "uniqueAlbum" UNIQUE("name"),\
                 PRIMARY KEY("id" AUTOINCREMENT)\
             )');
@@ -63,7 +64,6 @@ class SqliteManager extends DbManager {
                 "trackNr"	INTEGER,\
                 "diskNr"	INTEGER,\
                 "year"	INTEGER,\
-                "path"	TEXT NOT NULL,\
                 "duration"	INTEGER NOT NULL,\
                 CONSTRAINT "uniqueTrack" UNIQUE("title","albumId","artistId"),\
                 PRIMARY KEY("id" AUTOINCREMENT),\
@@ -299,8 +299,8 @@ class SqliteManager extends DbManager {
             else reject("Genres must be a string or an array of strings");
 
 
-            this.db.prepare("INSERT INTO tracks(title, artistId, albumId, composer, trackNr, diskNr, year, path, duration) VALUES(?,?,?,?,?,?,?,?,?)")
-                .run(infos.title, infos.artistId, infos.albumId, infos.composer, infos.trackNr, infos.diskNr, infos.year, infos.path, infos.duration, err => {
+            this.db.prepare("INSERT INTO tracks(title, artistId, albumId, composer, trackNr, diskNr, year, duration) VALUES(?,?,?,?,?,?,?,?)")
+                .run(infos.title, infos.artistId, infos.albumId, infos.composer, infos.trackNr, infos.diskNr, infos.year, infos.duration, err => {
                     if (err) reject(err);
 
 
@@ -555,9 +555,11 @@ class SqliteManager extends DbManager {
         return new Promise((resolve, reject) => {
             if (typeof (infos.name) == "undefined")
                 reject("Album name not provided");
+            if(typeof(infos.path) == "undefined")
+                reject("Album path not provided");
 
-            this.db.prepare("INSERT INTO albums(name, cover) VALUES (?,?)")
-                .run(infos.name, typeof (infos.coverPath) == "undefined" ? null : infos.coverPath, (err) => {
+            this.db.prepare("INSERT INTO albums(name, path, cover) VALUES (?,?, ?)")
+                .run(infos.name, infos.path, typeof (infos.coverPath) == "undefined" ? null : infos.coverPath, (err) => {
                     if (err) reject(err);
                     resolve();
                 });
@@ -599,14 +601,14 @@ class SqliteManager extends DbManager {
 
     }
 
-    async getAlbumArtist(id) {
+    async getAlbumDir(id) {
         return new Promise((resolve, reject) => {
             if (typeof (id) != "number") reject("Id is not of type number");
 
-            this.db.prepare("select artists.name FROM artists INNER JOIN tracks ON tracks.artistId=artists.id WHERE albumId=? ORDER BY tracks.trackNr LIMIT 1")
+            this.db.prepare("select path from albums where id=?")
                 .get(id, (err, val) => {
                     if (err) reject(err);
-                    resolve(val.name);
+                    resolve(val.path);
                 })
                 .finalize();
         });

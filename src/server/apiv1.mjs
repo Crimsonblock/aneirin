@@ -374,6 +374,19 @@ class Apiv1 {
 
 
             })
+            .get("/search/:searchTerm", async(req, res)=>{
+                res.setHeader("Content-Type", "application/json");
+                try{
+                    res.send(await this.resources.db.search(req.params.searchTerm)); 
+                }
+                catch(e){
+                    res.status(500);
+                    res.send("Internal Server Error");
+                    log(LOG_LEVEL.ERROR, "An error occurred while searching for "+req.params.searchTerm);
+                    log(LOG_LEVEL.ERROR, e);
+                }
+                
+            });
 
 
 

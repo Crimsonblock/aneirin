@@ -10,8 +10,6 @@ import Setup from "./setup.mjs";
 
 class LibraryManager {
     setup(config, resources) {
-        if(typeof(this.db) != "undefined") this.db.close();
-
         this.config = config;
         this.db = Setup.init(config);
 
@@ -27,6 +25,8 @@ class LibraryManager {
 
         this.config.transcoding = true;
         var files = readdirSync(path.join(this.config.data_dir, "/toBeProcessed"));
+
+        process.send({type: "updateTranscoding", val: true});
 
         for (var i = 0; i < files.length; i++) {
             log(LOG_LEVEL.INFO, "Processing file " + (i + 1) + " of " + files.length);
@@ -150,6 +150,7 @@ class LibraryManager {
         }
 
         delete this.config.transcoding;
+        process.send({type: "updateTranscoding", val: false});
 
     }
 
@@ -231,7 +232,6 @@ process.on("message", msg=>{
             libMgr.processDataDirectory();
             break;
         case "stop":
-            limMgr.close();
             process.exit(0);
     }
 });

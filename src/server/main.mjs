@@ -55,6 +55,15 @@ resources.libraryManager = fork("libraryManager.mjs");
 resources.libraryManager.send({type:"setup", config: config});
 resources.db = Setup.init(config);
 
+
+resources.libraryManager.on("message", msg=>{
+    switch(msg.type){
+        case "updateTranscoding":
+            config.transcoding = msg.val;
+    }
+});
+
+
 log( LOG_LEVEL.WARN, "[index.mjs - 45] TEST ENVIRONMENT VARIABLES SET. REMEMBER TO REMOVE BEFORE DEPLOYMENT");
 
 

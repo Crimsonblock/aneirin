@@ -4,11 +4,11 @@ import Setup from "./setup.mjs";
 import bodyParser from "body-parser";
 import cors from "cors";
 import path from "node:path";
+import { fork } from "node:child_process";
 
 const VERSION = "0.1.0";
 
 import apiv1 from "./apiv1.mjs";
-import LibraryManager from "./LibraryManager.mjs";
 import log, {LOG_LEVEL} from "./utils.mjs";
 
 process.env.DATA_DIR = typeof(process.env.DATA_DIR) == "undefined" ? "/data" : process.env.DATA_DIR;
@@ -49,10 +49,11 @@ process.env.PASSWORD = "password";
 
 process.env.EXPERIMENTAL = true;
 
-const resources = {};
-resources.db = Setup.init(config);
-resources.libraryManager = new LibraryManager(config, resources);
 
+const resources = {};
+resources.libraryManager = fork("libraryManager.mjs");
+resources.libraryManager.send({type:"setup", config: config});
+resources.db = Setup.init(config);
 
 log( LOG_LEVEL.WARN, "[index.mjs - 45] TEST ENVIRONMENT VARIABLES SET. REMEMBER TO REMOVE BEFORE DEPLOYMENT");
 
@@ -110,6 +111,7 @@ function stopApp() {
     log(LOG_LEVEL.INFO, "Stopping application");
     server.close();
     api.closeOpenFiles();
+    resources.libraryManager.send({type:"stop"});
     process.exit(0);
 }
 

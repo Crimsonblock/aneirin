@@ -137,7 +137,7 @@ class Apiv1 {
 
         filesController.post("/startTranscoding", (req, res) => {
             res.send("ok");
-            this.resources.libraryManager.processDataDirectory();
+            this.resources.libraryManager.send({type:"transcode"});
         });
 
 

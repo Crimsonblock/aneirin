@@ -4,15 +4,22 @@ import path from "path";
 import log, { LOG_LEVEL } from "./utils.mjs";
 import { execSync } from "child_process";
 import { XMLBuilder, XMLParser } from "fast-xml-parser";
+import Setup from "./setup.mjs";
 
 
 
 class LibraryManager {
-    constructor(config, resources) {
+    setup(config, resources) {
+        if(typeof(this.db) != "undefined") this.db.close();
+
         this.config = config;
-        this.resources = resources;
+        this.db = Setup.init(config);
+
     }
 
+    close(){
+        if(typeof(this.db) != "undefined") this.db.close();
+    }
 
 
     async processDataDirectory() {
@@ -57,7 +64,7 @@ class LibraryManager {
 
             var albumInfos = { name: metadata.common.album }
 
-            var album = await this.resources.db.getAlbum(albumInfos);
+            var album = await this.db.getAlbum(albumInfos);
             if (typeof (album) == "undefined") {
                 var albumDir = path.join("/library/", albumArtist.name, "/", metadata.common.album);
 
@@ -81,9 +88,9 @@ class LibraryManager {
                 
                 albumInfos.path = albumDir;
 
-                await this.resources.db.addNewAlbum(albumInfos);
+                await this.db.addNewAlbum(albumInfos);
                 delete albumInfos.coverPath;
-                album = await this.resources.db.getAlbum(albumInfos);
+                album = await this.db.getAlbum(albumInfos);
             }
 
 
@@ -102,7 +109,7 @@ class LibraryManager {
             };
 
 
-            await this.resources.db.addNewTrack(trackInfos).catch(e => {
+            await this.db.addNewTrack(trackInfos).catch(e => {
                 if (e.errno == 19) {
                     log(LOG_LEVEL.WARN, "The track " + trackInfos.title + " already exists, it will be updated");
                 }
@@ -120,7 +127,7 @@ class LibraryManager {
             delete trackInfos.path;
             delete trackInfos.diskNr;
 
-            var track = await this.resources.db.getTracks(trackInfos).catch(e => {
+            var track = await this.db.getTracks(trackInfos).catch(e => {
                 log(LOG_LEVEL.ERROR, "An error occurred while retrieving the new track");
                 log(LOG_LEVEL.ERROR, e, this.config);
             });
@@ -147,10 +154,10 @@ class LibraryManager {
     }
 
     async getArtistCreateIfNotExists(name) {
-        var artist = await this.resources.db.getArtist({ name: name }).catch(e => log(LOG_LEVEL.ERRORR, "An error occurred while retrieving an artist from the database: " + e));
+        var artist = await this.db.getArtist({ name: name }).catch(e => log(LOG_LEVEL.ERRORR, "An error occurred while retrieving an artist from the database: " + e));
         if (typeof (artist) == "undefined") {
-            this.resources.db.addNewArtist({ name: name }).catch(console.log);
-            artist = await this.resources.db.getArtist({ name: name }).catch(e => log(LOG_LEVEL.ERRORR, "An error occurred while adding an artist to the database: " + e));
+            this.db.addNewArtist({ name: name }).catch(console.log);
+            artist = await this.db.getArtist({ name: name }).catch(e => log(LOG_LEVEL.ERRORR, "An error occurred while adding an artist to the database: " + e));
         }
         return artist;
     }
@@ -211,6 +218,23 @@ class LibraryManager {
 
 }
 
+
+var libMgr = new LibraryManager();
+
+
+process.on("message", msg=>{
+    switch(msg.type){
+        case "setup":
+            libMgr.setup(msg.config, msg.resources);
+            break;
+        case "transcode":
+            libMgr.processDataDirectory();
+            break;
+        case "stop":
+            limMgr.close();
+            process.exit(0);
+    }
+});
 
 
 

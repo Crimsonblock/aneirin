@@ -137,7 +137,7 @@ class Apiv1 {
 
         filesController.post("/startTranscoding", (req, res) => {
             res.send("ok");
-            this.resources.libraryManager.send({type:"transcode"});
+            this.resources.libraryManager.send({ type: "transcode" });
         });
 
 
@@ -339,7 +339,7 @@ class Apiv1 {
                         'Content-Type': 'audio/mp4'
                     }
 
-                    if (req.headers["accept-encoding"].split(", ").includes("deflate")){
+                    if (req.headers["accept-encoding"].split(", ").includes("deflate")) {
                         log(LOG_LEVEL.DEBUG, "Deflating the file before piping it")
                         var deflate = createDeflate();
 
@@ -348,21 +348,21 @@ class Apiv1 {
                         res.writeHead(206, headers);
                         file.pipe(deflate).pipe(res);
                     }
-                    else if (req.headers["accept-encoding"].split(", ").includes("gzip")){
+                    else if (req.headers["accept-encoding"].split(", ").includes("gzip")) {
                         log(LOG_LEVEL.DEBUG, "GZipping the file before piping it")
                         var gzip = createGzip();
-                        
+
                         delete headers["Content-Length"];
                         headers["Content-Encoding"] = "gzip";
                         res.writeHead(206, headers);
                         file.pipe(gzip).pipe(res);
                     }
-                    else{
+                    else {
                         log(LOG_LEVEL.DEBUG, req.headers);
                         res.writeHead(206, headers);
                         file.pipe(res);
                     }
-                        
+
 
                 }
                 catch (e) {
@@ -374,20 +374,39 @@ class Apiv1 {
 
 
             })
-            .get("/search/:searchTerm", async(req, res)=>{
+            .get("/search/:searchTerm", async (req, res) => {
                 res.setHeader("Content-Type", "application/json");
-                try{
-                    res.send(await this.resources.db.search(req.params.searchTerm)); 
+                try {
+                    res.send(await this.resources.db.search(req.params.searchTerm));
                 }
-                catch(e){
+                catch (e) {
                     res.status(500);
                     res.send("Internal Server Error");
-                    log(LOG_LEVEL.ERROR, "An error occurred while searching for "+req.params.searchTerm);
+                    log(LOG_LEVEL.ERROR, "An error occurred while searching for " + req.params.searchTerm);
                     log(LOG_LEVEL.ERROR, e);
                 }
-                
-            });
 
+            })
+            .get("/albumInfo/:albumId", async (req, res)=>{
+                res.setHeader("Content-Type", "application/json");
+                res.send(await this.resources.db.getAlbumsInfo(req.params.albumId));
+            })
+            .post("/albumsInfo", bodyParser.json(), handleJsonError, async (req, res) => {
+                log(LOG_LEVEL.DEBUG, "Getting Album info for ids " + req.body);
+                res.setHeader("Content-Type", "application/json");
+                res.send(await this.resources.db.getAlbumsInfo(req.body).catch(e => {
+                    log(LOG_LEVEL.ERROR, "An error occurred while fetching infos of albums: " + req.body.toString());
+                    log(LOG_LEVEL.ERROR, e);
+                    res.statusCode(500);
+                    res.send("Internal server error");
+                }));
+            })
+            .get("/artistInfo/:artistId", (req, res)=>{
+
+            })
+            .get("/artistInfo/:genres", (req, res) =>{
+
+            });
 
 
         return lib;

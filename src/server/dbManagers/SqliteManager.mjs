@@ -566,6 +566,42 @@ class SqliteManager extends DbManager {
         });
     }
 
+    async getAlbumsInfo(albumIds){
+        if (typeof (albumIds) == "number") albumIds = [albumIds];
+        else if (typeof (albumIds) == "string") albumIds = [parseInt(albumIds)];
+
+        return new Promise((resolve, reject)=>{
+            var stmt = `select albums.id,
+                albums.name as albumName,
+                albums.cover,
+                json_group_array(DISTINCT artists.name)as artistNames,
+                json_group_array(DISTINCT artists.id) as artistIds
+            from tracks 
+            LEFT JOIN albums ON tracks.albumId=albums.id
+            LEFT JOIN artists ON tracks.artistId=artists.id
+            WHERE albums.id IN `
+        
+            var ids = "(" + albumIds[0];
+
+            for (var i = 1; i < albumIds.length; i++) {
+                ids += "," + albumIds[i];
+            }
+            ids += ") ";
+            stmt = stmt+ ids + " GROUP BY albums.id";
+
+            stmt = this.db.prepare(stmt);
+
+            stmt.all((err, row)=>{
+                if(err) reject(err);
+                resolve(row);
+            })
+            .finalize();
+        
+        });
+
+       
+    }
+
     /**
      * Retrieves the albums informations with the matching criteria. The function needs to throw an error with the message "Invalid id provided" 
      * if an id was provided but not of type number.

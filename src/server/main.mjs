@@ -105,11 +105,6 @@ app.get("/stop", (req, res)=>{
     else if(config.installStage == 1) res.redirect("/setup/account");
     else res.redirect("/setup");
 })
-.post("/test", bodyParser.raw(), (req, res)=>{
-    console.log(req.body.readUInt8());
-    // console.log(req.body.toString());
-    res.send("Ok");
-})
 ;
 
 
@@ -117,7 +112,7 @@ process.on('SIGTERM', stopApp);
 process.on("SIGINT", stopApp);
 
 function stopApp() {
-    log(LOG_LEVEL.INFO, "Stopping application");
+    console.log("Stopping application");
     server.close();
     api.closeOpenFiles();
     resources.libraryManager.send({type:"stop"});
@@ -125,5 +120,5 @@ function stopApp() {
 }
 
 var server = app.listen(port, ()=>{
-    log(LOG_LEVEL.INFO, "Application started");
+    console.log("Application started on port "+port);
 });

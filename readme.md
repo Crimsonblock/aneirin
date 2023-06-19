@@ -19,11 +19,11 @@ Section to be written
 ### Todos
 Aneirin is far from complete. You can find what is left to be done for v1.0.0 in this section:
 
+Readme:
 - [ ] Write the "Run Aneirin with docker" section in the readme
 - [ ] Write the "Run Aneirin from source" section in the readme  
 
 Server: 
-
 - [x] Function to process uploaded files
 - [ ] Admin Endpoints:
   - [x] Endpoint to receive file chunk and write it to the file
@@ -37,7 +37,7 @@ Server:
   - [x] Endpoint to search for tracks/album/artists in the database
   - [x] Endpoint to retrieve MPD
   - [x] Endpoint to retrieve a track's segment
-  - [ ] Endpoint to retrieve album information
+  - [x] Endpoint to retrieve album information
   - [ ] Endpoint to retrieve Artist's information
   - [ ] Endpoint to retrieve Genres informations
 - [ ] Add support for MySql/MariaDB

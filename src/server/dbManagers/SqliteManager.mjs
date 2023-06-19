@@ -159,7 +159,7 @@ class SqliteManager extends DbManager {
                 INNER JOIN albums ON tracks.albumId=albums.id
                 INNER JOIN artists ON tracks.artistId=artists.id
                 WHERE albums.name like ?
-                LIMIT `+SEARCH_LIMIT+`
+                LIMIT `+ SEARCH_LIMIT + `
                 ) AS B,
                 (SELECT DISTINCT tracks.title as trackTitle,
                     tracks.id as trackId
@@ -168,7 +168,7 @@ class SqliteManager extends DbManager {
                 INNER JOIN artists ON tracks.artistId=artists.id
                 WHERE albums.name like ?
                 ORDER BY tracks.trackNr
-                LIMIT `+SEARCH_LIMIT+`)
+                LIMIT `+ SEARCH_LIMIT + `)
                 AS C
                 GROUP BY A.albumId`);
                 albumStmt.all(flashName, flashName, flashName, (err, res) => {
@@ -396,19 +396,18 @@ class SqliteManager extends DbManager {
             INNER JOIN artists ON tracks.artistId=artists.id
             WHERE tracks.id IN `;
 
-            var ids = "(" + tracksId[0];
+            var ids = "(?";
 
             for (var i = 1; i < tracksId.length; i++) {
-                ids += "," + tracksId[i];
+                ids += ",?";
             }
             ids += ") ";
 
             stmt = stmt + ids + "ORDER BY albums.id, tracks.trackNr";
 
-
             stmt = this.db.prepare(stmt);
 
-            stmt.all((err, val) => {
+            stmt.all(tracksId, (err, val) => {
                 if (err) reject(err);
                 resolve(val);
             });
@@ -555,7 +554,7 @@ class SqliteManager extends DbManager {
         return new Promise((resolve, reject) => {
             if (typeof (infos.name) == "undefined")
                 reject("Album name not provided");
-            if(typeof(infos.path) == "undefined")
+            if (typeof (infos.path) == "undefined")
                 reject("Album path not provided");
 
             this.db.prepare("INSERT INTO albums(name, path, cover) VALUES (?,?, ?)")
@@ -566,11 +565,11 @@ class SqliteManager extends DbManager {
         });
     }
 
-    async getAlbumsInfo(albumIds){
+    async getAlbumsInfo(albumIds) {
         if (typeof (albumIds) == "number") albumIds = [albumIds];
         else if (typeof (albumIds) == "string") albumIds = [parseInt(albumIds)];
 
-        return new Promise((resolve, reject)=>{
+        return new Promise((resolve, reject) => {
             var stmt = `select albums.id,
                 albums.name as albumName,
                 albums.cover,
@@ -580,26 +579,26 @@ class SqliteManager extends DbManager {
             LEFT JOIN albums ON tracks.albumId=albums.id
             LEFT JOIN artists ON tracks.artistId=artists.id
             WHERE albums.id IN `
-        
-            var ids = "(" + albumIds[0];
+
+            var ids = "(?";
 
             for (var i = 1; i < albumIds.length; i++) {
-                ids += "," + albumIds[i];
+                ids += ",?";
             }
             ids += ") ";
-            stmt = stmt+ ids + " GROUP BY albums.id";
+            stmt = stmt + ids + " GROUP BY albums.id";
 
             stmt = this.db.prepare(stmt);
 
-            stmt.all((err, row)=>{
-                if(err) reject(err);
+            stmt.all(albumIds, (err, row) => {
+                if (err) reject(err);
                 resolve(row);
             })
-            .finalize();
-        
+                .finalize();
+
         });
 
-       
+
     }
 
     /**

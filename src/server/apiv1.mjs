@@ -260,11 +260,18 @@ class Apiv1 {
         })
             .post("/tracksInfo", bodyParser.json(), handleJsonError, async (req, res) => {
                 log(LOG_LEVEL.DEBUG, "Getting Track info for id " + req.body);
+
+                if(req.body == {}){
+                    res.status(400);
+                    res.send("Bad Request.");
+                    log(LOG_LEVEL.WARN, "Recieved a request for albums info without a json body or header.");
+                }
+
                 res.setHeader("Content-Type", "application/json");
                 res.send(await this.resources.db.getTracksInfo(req.body).catch(e => {
                     log(LOG_LEVEL.ERROR, "An error occurred while fetching infos of tracks: " + req.body.toString());
                     log(LOG_LEVEL.ERROR, e);
-                    res.statusCode(500);
+                    res.status(500);
                     res.send("Internal server error");
                 }));
             })
@@ -388,23 +395,37 @@ class Apiv1 {
 
             })
             .get("/albumInfo/:albumId", async (req, res)=>{
+                log(LOG_LEVEL.DEBUG, "Getting Album info for id" + req.params.albumId);
+
                 res.setHeader("Content-Type", "application/json");
-                res.send(await this.resources.db.getAlbumsInfo(req.params.albumId));
+                res.send(await this.resources.db.getAlbumsInfo(req.params.albumId).catch(e =>{
+                    log(LOG_LEVEL.ERROR, "An error occurred while fetching infos of album: " + req.body.toString());
+                    log(LOG_LEVEL.ERROR, e);
+                    res.statusCode(500);
+                    res.send("Internal server error");
+                }));
             })
             .post("/albumsInfo", bodyParser.json(), handleJsonError, async (req, res) => {
                 log(LOG_LEVEL.DEBUG, "Getting Album info for ids " + req.body);
+
+                if(req.body == {}){
+                    res.status(400);
+                    res.send("Bad Request.");
+                    log(LOG_LEVEL.WARN, "Recieved a request for albums info without a json body or header.");
+                }
+
                 res.setHeader("Content-Type", "application/json");
                 res.send(await this.resources.db.getAlbumsInfo(req.body).catch(e => {
                     log(LOG_LEVEL.ERROR, "An error occurred while fetching infos of albums: " + req.body.toString());
                     log(LOG_LEVEL.ERROR, e);
-                    res.statusCode(500);
+                    res.status(500);
                     res.send("Internal server error");
                 }));
             })
             .get("/artistInfo/:artistId", (req, res)=>{
 
             })
-            .get("/artistInfo/:genres", (req, res) =>{
+            .get("/genreInfo/:genres", (req, res) =>{
 
             });
 

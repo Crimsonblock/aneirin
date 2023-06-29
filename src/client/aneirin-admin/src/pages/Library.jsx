@@ -16,7 +16,7 @@ export default function Library(props) {
 
 
     var serverBusyUrl = process.env.NODE_ENV === "development" ? "http://localhost:8080/api/v1/files/isTranscoding" : "/api/v1/files/isTranscoding";
-    fetch(serverBusyUrl).then(async res => {
+    fetch(serverBusyUrl, {mode:"cors"}).then(async res => {
         setServerBusy(await res.json());
     }).catch(e => console.log("Could not contact server"));
 
@@ -168,7 +168,9 @@ export default function Library(props) {
 
         for (var i = 0; i < filesState.length; i++) {
             var buffer = await filesState[i].arrayBuffer();
-            var response = await fetch(process.env.NODE_ENV === "development" ? "http://localhost:8080/api/v1/files/create/" + buffer.byteLength : "/api/v1/create/" + buffer.byteLength, { mode: "cors", method: "POST" })
+            var plop = process.env.NODE_ENV === "development" ? "http://localhost:8080/api/v1/files/create/" + buffer.byteLength : "/api/v1/create/" + buffer.byteLength;
+            console.log(plop);
+            var response = await fetch( plop, { mode: "cors", method: "POST" })
                 .catch(e => console.log("An error occurred while creating the file", e));
             var fileId = await response.text();
 
@@ -199,7 +201,7 @@ export default function Library(props) {
             }
 
             console.log("file successfully uploaded");
-            response = await fetch(process.env.NODE_ENV === "development" ? "http://localhost:8080/api/v1/files/close/" + fileId : "/api/v1/files/close/" + fileId, { method: "POST" });
+            response = await fetch(process.env.NODE_ENV === "development" ? "http://localhost:8080/api/v1/files/close/" + fileId : "/api/v1/files/close/" + fileId, { method: "POST", mode:"cors" });
         }
 
         setUploading(false);
@@ -208,7 +210,7 @@ export default function Library(props) {
         await fetch(reqUrl, { method: "POST" }).catch("Could not start the transcoding operation on the server.");
 
         var serverBusyInterval = setInterval(() => {
-            fetch(serverBusyUrl).then(async res => {
+            fetch(serverBusyUrl, {mode:"cors"}).then(async res => {
                 var serverBusy = await res.json();
                 if (!serverBusy) {
                     setServerBusy(serverBusy);

@@ -1,10 +1,11 @@
+import { LOG_LEVEL } from "../utils.mjs";
 import DbManager from "./DbManager.mjs";
 import sqlite3 from "sqlite3";
 
 // TODO add Tags, playlists and maybe tokens table.
 
 const SEARCH_LIMIT = 5;
-
+const DEFAULT_LIMIT=10;
 
 class SqliteManager extends DbManager {
     constructor() {
@@ -70,6 +71,7 @@ class SqliteManager extends DbManager {
                 CONSTRAINT "trackArtistId" FOREIGN KEY("artistId") REFERENCES "artists"("id"),\
                 CONSTRAINT "trackAlbumId" FOREIGN KEY("albumId") REFERENCES "albums"("id")\
             )');
+
             // Creates the genres table
             this.db.run('\
             CREATE TABLE IF NOT EXISTS "genres"(\
@@ -332,7 +334,7 @@ class SqliteManager extends DbManager {
      * 
      * @returns an array containing all the tracks matching the search criteria.
      */
-    getTracks(criteria) {
+    getTracks(criteria, limit=-1) {
         return new Promise((resolve, reject) => {
             var searchS = "SELECT * FROM tracks WHERE ";
             var searchV = [];
@@ -341,9 +343,15 @@ class SqliteManager extends DbManager {
                 searchV.push(criteria[k]);
             });
 
+            
+            if(limit != -1)
+                searchS += " LIMIT "+limit;
+
             var stmt = this.db.prepare(searchS, (err) => {
                 if (err != null) console.log("An error occured while getting the albums: ", err);
             });
+
+
             stmt.get(searchV, (err, row) => {
 
                 if (err) {
@@ -403,7 +411,7 @@ class SqliteManager extends DbManager {
             }
             ids += ") ";
 
-            stmt = stmt + ids + "ORDER BY albums.id, tracks.trackNr";
+            stmt = stmt + ids + "ORDER BY albums.id, tracks.trackNr, tracks.diskNr";
 
             stmt = this.db.prepare(stmt);
 
@@ -481,6 +489,43 @@ class SqliteManager extends DbManager {
             });
         })
 
+    }
+
+    async getArtistInfo(artistId){
+        if(typeof(artistId) == "string") artistId = parseInt(artistId);
+        return new Promise((resolve, reject) => {
+            if (typeof (artistId) != "number") reject("artistId must be of type number");
+
+            var stmt = `SELECT * FROM artists WHERE id=?`;
+
+            stmt = this.db.prepare(stmt);
+
+            stmt.get(artistId, (err, baseArtistInfo) => {
+                if (err) reject(err);
+                if(typeof(baseArtistInfo) == "undefined") {
+                    resolve();
+                    return;
+                }
+                
+                stmt = `SELECT DISTINCT id FROM tracks WHERE artistId=? LIMIT 10`;
+                stmt = this.db.prepare(stmt);
+
+                stmt.all(artistId, (err, trackList) =>{
+                    if(err) reject(err);
+                    baseArtistInfo.tracks = trackList.map(track => track.id);;
+
+                    stmt = `SELECT DISTINCT albumId FROM tracks WHERE artistId=? LIMIT 10`;
+                    stmt = this.db.prepare(stmt);
+                    stmt.all(artistId, (err, albumList)=>{
+                        if(err) reject(err);
+
+                        baseArtistInfo.albums = albumList.map(album => album.albumId);
+                        resolve(baseArtistInfo);
+
+                    }).finalize();
+                }).finalize();
+            }).finalize();
+        });
     }
 
     /**

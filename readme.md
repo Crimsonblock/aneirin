@@ -38,7 +38,7 @@ Server:
   - [x] Endpoint to retrieve MPD
   - [x] Endpoint to retrieve a track's segment
   - [x] Endpoint to retrieve album information
-  - [ ] Endpoint to retrieve Artist's information
+  - [x] Endpoint to retrieve Artist's information
   - [ ] Endpoint to retrieve Genres informations
 - [ ] Add support for MySql/MariaDB
 

@@ -261,7 +261,7 @@ class Apiv1 {
             .post("/tracksInfo", bodyParser.json(), handleJsonError, async (req, res) => {
                 log(LOG_LEVEL.DEBUG, "Getting Track info for id " + req.body);
 
-                if(req.body == {}){
+                if (req.body == {}) {
                     res.status(400);
                     res.send("Bad Request.");
                     log(LOG_LEVEL.WARN, "Recieved a request for albums info without a json body or header.");
@@ -394,21 +394,21 @@ class Apiv1 {
                 }
 
             })
-            .get("/albumInfo/:albumId", async (req, res)=>{
+            .get("/albumInfo/:albumId", async (req, res) => {
                 log(LOG_LEVEL.DEBUG, "Getting Album info for id" + req.params.albumId);
 
                 res.setHeader("Content-Type", "application/json");
-                res.send(await this.resources.db.getAlbumsInfo(req.params.albumId).catch(e =>{
-                    log(LOG_LEVEL.ERROR, "An error occurred while fetching infos of album: " + req.body.toString());
+                res.send(await this.resources.db.getAlbumsInfo(req.params.albumId).catch(e => {
+                    log(LOG_LEVEL.ERROR, "An error occurred while fetching infos of album: " + req.params.albumId);
                     log(LOG_LEVEL.ERROR, e);
-                    res.statusCode(500);
+                    res.status(500);
                     res.send("Internal server error");
                 }));
             })
             .post("/albumsInfo", bodyParser.json(), handleJsonError, async (req, res) => {
                 log(LOG_LEVEL.DEBUG, "Getting Album info for ids " + req.body);
 
-                if(req.body == {}){
+                if (req.body == {}) {
                     res.status(400);
                     res.send("Bad Request.");
                     log(LOG_LEVEL.WARN, "Recieved a request for albums info without a json body or header.");
@@ -422,10 +422,25 @@ class Apiv1 {
                     res.send("Internal server error");
                 }));
             })
-            .get("/artistInfo/:artistId", (req, res)=>{
+            .get("/artistInfo/:artistId", async (req, res) => {
+                /*
+                    Info to retrieve: 
+                        - Artist basic infos V
+                        - Albums with artist (limit of 10, button to get all)
+                        - Tracks by artist (limit of 10) 
+                */
 
+                log(LOG_LEVEL.DEBUG, "Getting Album info for id " + parseInt(req.params.artistId));
+
+                res.setHeader("Content-Type", "application/json");
+                res.send(await this.resources.db.getArtistInfo(req.params.artistId).catch(e => {
+                    log(LOG_LEVEL.ERROR, "An error occurred while fetching infos of artist: " + req.params.artistId)
+                    log(LOG_LEVEL.ERROR, e);
+                    res.status(500);
+                    res.send("Internal server error");
+                }));
             })
-            .get("/genreInfo/:genres", (req, res) =>{
+            .get("/genreInfo/:genres", (req, res) => {
 
             });
 

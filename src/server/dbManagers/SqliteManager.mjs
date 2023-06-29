@@ -5,7 +5,7 @@ import sqlite3 from "sqlite3";
 // TODO add Tags, playlists and maybe tokens table.
 
 const SEARCH_LIMIT = 5;
-const DEFAULT_LIMIT=10;
+const DEFAULT_LIMIT = 10;
 
 class SqliteManager extends DbManager {
     constructor() {
@@ -87,6 +87,7 @@ class SqliteManager extends DbManager {
                 "trackId" INTEGER NOT NULL,\
                 "genreId" INTEGER NOT NULL,\
                 PRIMARY KEY("id" AUTOINCREMENT),\
+                CONSTRAINT "uniqueTrack" unique("trackId", "genreId") \
                 CONSTRAINT "trackGenresTrackId" FOREIGN KEY("trackId") REFERENCES tracks("id"),\
                 CONSTRAINT "trackGenresGenreId" FOREIGN KEY("genreId") REFERENCES genres("id")\
             )')
@@ -334,7 +335,7 @@ class SqliteManager extends DbManager {
      * 
      * @returns an array containing all the tracks matching the search criteria.
      */
-    getTracks(criteria, limit=-1) {
+    getTracks(criteria, limit = -1) {
         return new Promise((resolve, reject) => {
             var searchS = "SELECT * FROM tracks WHERE ";
             var searchV = [];
@@ -343,9 +344,9 @@ class SqliteManager extends DbManager {
                 searchV.push(criteria[k]);
             });
 
-            
-            if(limit != -1)
-                searchS += " LIMIT "+limit;
+
+            if (limit != -1)
+                searchS += " LIMIT " + limit;
 
             var stmt = this.db.prepare(searchS, (err) => {
                 if (err != null) console.log("An error occured while getting the albums: ", err);
@@ -491,8 +492,8 @@ class SqliteManager extends DbManager {
 
     }
 
-    async getArtistInfo(artistId){
-        if(typeof(artistId) == "string") artistId = parseInt(artistId);
+    async getArtistInfo(artistId) {
+        if (typeof (artistId) == "string") artistId = parseInt(artistId);
         return new Promise((resolve, reject) => {
             if (typeof (artistId) != "number") reject("artistId must be of type number");
 
@@ -502,22 +503,22 @@ class SqliteManager extends DbManager {
 
             stmt.get(artistId, (err, baseArtistInfo) => {
                 if (err) reject(err);
-                if(typeof(baseArtistInfo) == "undefined") {
+                if (typeof (baseArtistInfo) == "undefined") {
                     resolve();
                     return;
                 }
-                
+
                 stmt = `SELECT DISTINCT id FROM tracks WHERE artistId=? LIMIT 10`;
                 stmt = this.db.prepare(stmt);
 
-                stmt.all(artistId, (err, trackList) =>{
-                    if(err) reject(err);
+                stmt.all(artistId, (err, trackList) => {
+                    if (err) reject(err);
                     baseArtistInfo.tracks = trackList.map(track => track.id);;
 
                     stmt = `SELECT DISTINCT albumId FROM tracks WHERE artistId=? LIMIT 10`;
                     stmt = this.db.prepare(stmt);
-                    stmt.all(artistId, (err, albumList)=>{
-                        if(err) reject(err);
+                    stmt.all(artistId, (err, albumList) => {
+                        if (err) reject(err);
 
                         baseArtistInfo.albums = albumList.map(album => album.albumId);
                         resolve(baseArtistInfo);
@@ -760,6 +761,30 @@ class SqliteManager extends DbManager {
     }
 
 
+
+    async getGenreInfo(genreId, limit = -1) {
+        if (limit === -1) limit = DEFAULT_LIMIT;
+        if (typeof (genreId) == "string") genreId = parseInt(genreId);
+        return new Promise((resolve, reject) => {
+            if (typeof (genreId) != "number") reject("Incorrect type of genreId, should be number but got " + typeof (genreId));
+
+            var stmt = this.db.prepare("SELECT name FROM genres WHERE id=?");
+
+            stmt.get(genreId, (err, genre) => {
+                if(err) reject(err);
+
+                stmt = this.db.prepare("SELECT trackId FROM trackGenres WHERE genreId=? LIMIT ?");
+                stmt.all(genreId, limit, (err, tracks) => {
+                    if (err) reject(err);
+                    genre.tracks = tracks.map(v=>v.trackId);
+                    resolve(genre);
+                }).finalize();
+            }).finalize();
+
+
+
+        });
+    }
 
 
     /**

@@ -423,14 +423,7 @@ class Apiv1 {
                 }));
             })
             .get("/artistInfo/:artistId", async (req, res) => {
-                /*
-                    Info to retrieve: 
-                        - Artist basic infos V
-                        - Albums with artist (limit of 10, button to get all)
-                        - Tracks by artist (limit of 10) 
-                */
-
-                log(LOG_LEVEL.DEBUG, "Getting Album info for id " + parseInt(req.params.artistId));
+                log(LOG_LEVEL.DEBUG, "Getting Album info for id " + req.params.artistId);
 
                 res.setHeader("Content-Type", "application/json");
                 res.send(await this.resources.db.getArtistInfo(req.params.artistId).catch(e => {
@@ -440,8 +433,16 @@ class Apiv1 {
                     res.send("Internal server error");
                 }));
             })
-            .get("/genreInfo/:genres", (req, res) => {
+            .get("/genreInfo/:genreId", async (req, res) => {
+                log(LOG_LEVEL.DEBUG, "Getting genre info for id " + req.params.artistId);
 
+                res.setHeader("Content-Type", "application/json");
+                res.send(await this.resources.db.getGenreInfo(req.params.genreId).catch(e => {
+                    log(LOG_LEVEL.ERROR, "An error occurred while fetching infos of artist: " + req.params.artistId)
+                    log(LOG_LEVEL.ERROR, e);
+                    res.status(500);
+                    res.send("Internal server error");
+                }));
             });
 
 

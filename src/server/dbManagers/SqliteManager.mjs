@@ -389,7 +389,7 @@ class SqliteManager extends DbManager {
         if (typeof (tracksId) == "number") tracksId = [tracksId];
         else if (typeof (tracksId) == "string") tracksId = [parseInt(tracksId)];
         return new Promise((resolve, reject) => {
-            if (typeof (tracksId) != "object") reject("TrackIds must be of type array");
+            if (! (tracksId instanceof Array)) reject("TrackIds must be of type array");
 
             var stmt = `SELECT tracks.id AS trackId, tracks.title, 
                 tracks.trackNr, 
@@ -616,6 +616,9 @@ class SqliteManager extends DbManager {
         else if (typeof (albumIds) == "string") albumIds = [parseInt(albumIds)];
 
         return new Promise((resolve, reject) => {
+
+            if (!(albumIds instanceof Array)) reject("Bad albums info");
+
             var stmt = `select albums.id,
                 albums.name as albumName,
                 albums.cover,
@@ -639,8 +642,7 @@ class SqliteManager extends DbManager {
             stmt.all(albumIds, (err, row) => {
                 if (err) reject(err);
                 resolve(row);
-            })
-                .finalize();
+            }).finalize();
 
         });
 
@@ -771,12 +773,12 @@ class SqliteManager extends DbManager {
             var stmt = this.db.prepare("SELECT name FROM genres WHERE id=?");
 
             stmt.get(genreId, (err, genre) => {
-                if(err) reject(err);
+                if (err) reject(err);
 
                 stmt = this.db.prepare("SELECT trackId FROM trackGenres WHERE genreId=? LIMIT ?");
                 stmt.all(genreId, limit, (err, tracks) => {
                     if (err) reject(err);
-                    genre.tracks = tracks.map(v=>v.trackId);
+                    genre.tracks = tracks.map(v => v.trackId);
                     resolve(genre);
                 }).finalize();
             }).finalize();

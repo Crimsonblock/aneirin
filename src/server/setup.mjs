@@ -146,7 +146,7 @@ function initSqliteDb(file = null, username = null, password = null) {
 
     // If username and password are present, initializes the first user
     if (username != null && password != null) {
-        db.addUser(username, createHash("sha256").update(password).digest("hex"), 1);
+        db.addUser(username, createHash("bcrypt").update(password).digest("hex"), 1);
     }
 
     return db;

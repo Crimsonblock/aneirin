@@ -333,7 +333,7 @@ class Apiv1 {
                 info.albumDir = await this.resources.db.getAlbumDir(info.albumId).catch(e => log(LOG_LEVEL.ERROR, e));
 
                 try {
-                    var filePath = path.join(this.config.data_dir, info.albumDir, info.title.replace(/\//g, "_") + "-stream" + req.params.streamId + ".mp4");
+                    var filePath = path.join(this.config.data_dir, info.albumDir, info.title.replace(/\//g, "_") + "-stream" + parseInt(req.params.streamId) + ".mp4");
                     log(LOG_LEVEL.DEBUG, filePath);
 
                     var file = createReadStream(filePath, { start: parseInt(range[0]), end: parseInt(range[1]) });

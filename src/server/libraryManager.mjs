@@ -211,6 +211,7 @@ class LibraryManager {
             .replace(/ /g, "\\ ")
             .replace(/\)/g, "\\)")
             .replace(/\(/g, "\\(")
+            .replace(/\\/g, "\\\\")
             .replace(/&/g, "\\&");
         if (!isDir) str = str.replace(/\//g, "_");
         return str;

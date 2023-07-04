@@ -66,7 +66,7 @@ class LibraryManager {
 
             var album = await this.db.getAlbum(albumInfos);
             if (typeof (album) == "undefined") {
-                var albumDir = path.join("/library/", albumArtist.name, "/", metadata.common.album);
+                var albumDir = path.join("/library/", LibraryManager.cleanString(albumArtist.name, false), "/", LibraryManager.cleanString(metadata.common.album, false));
 
                 // If the track's file contains the cover picture of the album, retrieves it and writes it to a file in the album folder.
                 for (var i in metadata.common.picture) {
@@ -207,11 +207,14 @@ class LibraryManager {
 
 
     static cleanString(str, isDir = true) {
-        str = str.replace(/'/g, "\\'")
+        str = str.replace(/\\/g, "\\\\")
+            .replace(/'/g, "\\'")
             .replace(/ /g, "\\ ")
             .replace(/\)/g, "\\)")
             .replace(/\(/g, "\\(")
-            .replace(/\\/g, "\\\\")
+            .replace(/\.\.\//g, "")
+            .replace(/#/g, "\\#")
+            .replace(/;/g, "")
             .replace(/&/g, "\\&");
         if (!isDir) str = str.replace(/\//g, "_");
         return str;

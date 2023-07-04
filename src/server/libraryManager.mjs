@@ -212,7 +212,7 @@ class LibraryManager {
             .replace(/ /g, "\\ ")
             .replace(/\)/g, "\\)")
             .replace(/\(/g, "\\(")
-            .replace(/\.\.\//g, "")
+            .replace(/\./g, "\\.")
             .replace(/#/g, "\\#")
             .replace(/;/g, "")
             .replace(/&/g, "\\&");

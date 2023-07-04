@@ -1,0 +1,6 @@
+[submodule "src/clients/aneirin-admin"]
+	path = src/clients/aneirin-admin
+	url = https://github.com/Crimsonblock/aneirin-admin.git
+[submodule "src/clients/aneirin-player"]
+	path = src/clients/aneirin-player
+	url = https://github.com/Crimsonblock/aneirin-player.git

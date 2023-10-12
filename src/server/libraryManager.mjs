@@ -66,14 +66,19 @@ class LibraryManager {
 
             var album = await this.db.getAlbum(albumInfos);
             if (typeof (album) == "undefined") {
-                var albumDir = path.join("/library/", LibraryManager.cleanString(albumArtist.name, false), "/", LibraryManager.cleanString(metadata.common.album, false));
+                var albumDir = path.join("/library/", albumArtist.name, "/", metadata.common.album);
 
                 // If the track's file contains the cover picture of the album, retrieves it and writes it to a file in the album folder.
                 for (var i in metadata.common.picture) {
                     if (typeof (metadata.common.picture[i].type) != "undefined" && metadata.common.picture[i].type.toLowerCase().includes("cover")) {
-                        mkdirSync(albumDir, { recursive: true });
+                        mkdirSync(path.join(process.env.DATA_DIR, albumDir), { recursive: true });
                         if (metadata.common.picture[i].format.includes("jpeg")) {
-                            writeFileSync(path.join(albumDir, "cover.jpg"), metadata.common.picture[i].data);
+                            try{
+                                writeFileSync(path.join(process.env.DATA_DIR, albumDir, "cover.jpg"), metadata.common.picture[i].data);
+                            }
+                            catch(e){
+                                log(LOG_LEVEL.ERROR, "An error occurred while writing the cover image: "+e);
+                            }
                             albumInfos.coverPath = path.join(albumDir, "cover.jpg");
                         }
                         else {

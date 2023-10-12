@@ -1,7 +1,6 @@
 import process from "node:process";
 import express from "express";
 import Setup from "./setup.mjs";
-import bodyParser from "body-parser";
 import cors from "cors";
 import path from "node:path";
 import { fork } from "node:child_process";
@@ -51,9 +50,9 @@ process.env.EXPERIMENTAL = true;
 
 
 const resources = {};
+resources.db = Setup.init(config);
 resources.libraryManager = fork("libraryManager.mjs");
 resources.libraryManager.send({type:"setup", config: config});
-resources.db = Setup.init(config);
 
 
 resources.libraryManager.on("message", msg=>{
@@ -71,8 +70,10 @@ log( LOG_LEVEL.WARN, "[index.mjs - 45] TEST ENVIRONMENT VARIABLES SET. REMEMBER 
 const app = express();
 const port = typeof(process.env.PORT) == "undefined" ? 80 : process.env.PORT;
 
-if(typeof(process.env.DEV)!="undefined")
+if(typeof(process.env.DEV)!="undefined"){
+    
     app.use(cors());
+}
 
 // Creates the api
 const api = new apiv1(config, resources);

@@ -1,8 +1,10 @@
 'use strict';
 
+const { default: sequelize } = require('sequelize');
+
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
-  async up (queryInterface, Sequelize) {
+  async up(queryInterface, Sequelize) {
     /**
      * Add altering commands here.
      *
@@ -11,7 +13,7 @@ module.exports = {
      */
 
     var transaction = await queryInterface.sequelize.transaction();
-    try{
+    try {
 
       // Creates a table to store the genres of a track
       await queryInterface.createTable("TrackGenres", {
@@ -32,47 +34,59 @@ module.exports = {
           onDelete: "CASCADE",
           unique: "trackGenre"
         },
-        genreId:{
+        genreId: {
           type: Sequelize.INTEGER,
           allowNull: false,
           references: {
-            model: "Genres", 
+            model: "Genres",
             key: "id"
           },
-          onUpdate: "CASCADE", 
+          onUpdate: "CASCADE",
           onDelete: "CASCADE",
           unique: "trackGenre"
         }
       });
 
       // Creates a table to store the artists that worked on a track
-      await queryInterface.createTable("TrackArtists", {
-        id:{
-          type: Sequelize.INTEGER,
-          primaryKey: true,
-          autoIncrement: true,
-          allowNull: false
+      // await queryInterface.createTable("TrackArtists", {
+      //   id: {
+      //     type: Sequelize.INTEGER,
+      //     primaryKey: true,
+      //     autoIncrement: true,
+      //     allowNull: false
+      //   },
+      //   trackId: {
+      //     type: Sequelize.INTEGER,
+      //     references: {
+      //       model: "Tracks",
+      //       key: "id"
+      //     },
+      //     onDelete: "CASCADE",
+      //     onUpdate: "CASCADE",
+      //     unique: "trackArtist"
+      //   },
+      //   artistId: {
+      //     type: Sequelize.INTEGER,
+      //     references: {
+      //       model: "Artists",
+      //       key: "id"
+      //     },
+      //     onDelete: "CASCADE",
+      //     onUpdate: "CASCADE",
+      //     unique: "trackArtist"
+      //   }
+      // });
+
+
+      await queryInterface.addColumn("Tracks", "artistId", {
+        type: sequelize.INTEGER,
+        allowNull: false,
+        references: {
+          model: "Artists",
+          key: "id"
         },
-        trackId:{
-          type: Sequelize.INTEGER,
-          references:{
-            model:"Tracks", 
-            key: "id"
-          },
-          onDelete: "CASCADE",
-          onUpdate: "CASCADE",
-          unique: "trackArtist"
-        },
-        artistId: {
-          type: Sequelize.INTEGER,
-          references: {
-            model: "Artists",
-            key: "id"
-          },
-          onDelete: "CASCADE",
-          onUpdate: "CASCADE",
-          unique: "trackArtist"
-        }
+        onDelete: "CASCADE",
+        onUpdate: "CASCADE"
       });
 
       // Creates the albumId column in the tracks
@@ -88,17 +102,19 @@ module.exports = {
       });
 
 
-      transaction.commit();
+      await transaction.commit();
     }
-    catch(e){
+    
+    catch (e) {
       console.log("An error occurred while migrating \"Create Associations\": ", e);
-      transaction.rollback();
+      await transaction.rollback();
+      throw new Error(e);
     }
 
 
   },
 
-  async down (queryInterface, Sequelize) {
+  async down(queryInterface, Sequelize) {
     /**
      * Add reverting commands here.
      *
@@ -108,15 +124,17 @@ module.exports = {
 
     var transaction = await queryInterface.sequelize.transaction();
 
-    try{
+    try {
       await queryInterface.dropTable("TrackGenres");
-      await queryInterface.dropTable("TrackArtists");
+      // await queryInterface.dropTable("TrackArtists");
+      await queryInterface.removeColumn("Tracks", "artistId");
       await queryInterface.removeColumn("Tracks", "albumId");
-      transaction.commit();
+      await transaction.commit();
     }
-    catch(e){
+    catch (e) {
       console.log("An error occurred while undoing migration \"Create Associations\": ", e);
-      transaction.rollback();
+      await transaction.rollback();
+      throw new Error(e);
     }
 
 

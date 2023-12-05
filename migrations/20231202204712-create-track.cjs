@@ -15,11 +15,10 @@ module.exports = {
         unique: "track"
       },
       trackNr: {
-        type: Sequelize.INTEGER
+        type: Sequelize.INTEGER,
+        allowNull: false
       },
-      diskNr: {
-        type: Sequelize.SMALLINT
-      },
+      diskNr: Sequelize.SMALLINT,
       year: {
         type: Sequelize.INTEGER,
         allowNull: false
@@ -27,14 +26,6 @@ module.exports = {
       duration: {
         type: Sequelize.INTEGER,
         allowNull: false
-      },
-      createdAt: {
-        allowNull: false,
-        type: Sequelize.DATE
-      },
-      updatedAt: {
-        allowNull: false,
-        type: Sequelize.DATE
       }
     });
   },

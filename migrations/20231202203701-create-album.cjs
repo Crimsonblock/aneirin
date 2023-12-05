@@ -13,20 +13,10 @@ module.exports = {
         type: Sequelize.STRING,
         allowNull: false
       },
-      cover: {
-        type: Sequelize.STRING
-      },
+      cover: Sequelize.STRING,
       path: {
         type: Sequelize.STRING,
         allowNull: false
-      },
-      createdAt: {
-        allowNull: false,
-        type: Sequelize.DATE
-      },
-      updatedAt: {
-        allowNull: false,
-        type: Sequelize.DATE
       }
     });
   },

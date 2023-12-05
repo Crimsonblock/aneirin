@@ -1,8 +1,17 @@
-import { Model, DataTypes } from "sequelize";
+import { Model, DataTypes, InferAttributes, InferCreationAttributes, CreationOptional } from "sequelize";
 
 
-class Genre extends Model {
-    modelAttributes = {
+export default class Genre extends Model<InferAttributes<Genre>, InferCreationAttributes<Genre>> {
+    declare id: CreationOptional<number>;
+    declare name: string;
+
+    static modelAttributes = {
+        id:{
+            type: DataTypes.INTEGER,
+            autoIncrement: true,
+            primaryKey: true,
+            allowNull: false
+        },
         name: {
             type: DataTypes.STRING,
             allowNull: false

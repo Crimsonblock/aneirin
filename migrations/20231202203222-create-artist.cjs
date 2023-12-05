@@ -11,19 +11,10 @@ module.exports = {
       },
       name: {
         type: Sequelize.STRING,
-        allowNull: false
-      },
-      picturePath: {
-        type: Sequelize.STRING
-      },
-      createdAt: {
         allowNull: false,
-        type: Sequelize.DATE
+        unique: true
       },
-      updatedAt: {
-        allowNull: false,
-        type: Sequelize.DATE
-      }
+      picturePath: Sequelize.STRING
     });
   },
   async down(queryInterface, Sequelize) {

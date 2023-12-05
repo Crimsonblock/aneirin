@@ -1,24 +1,28 @@
 import { Sequelize, Options, Model } from "sequelize"
-import { dbInfo, RawInfo, DBMSInfo, SqliteInfo } from "./DbManager.js";
+import { DBInfo, RawInfo, DBMSInfo, SqliteInfo } from "./DbManager.js";
+
+import Album from "./models/Album.js";
+import Track from "./models/Track.js";
+import Genre from "./models/Genre.js";
+import Artist from "./models/Artists.js";
+import User from "./models/User.js";
 
 
-
-function isRawInfo(info: dbInfo): info is RawInfo {
+function isRawInfo(info: DBInfo): info is RawInfo {
     return typeof (info) == "object" && typeof ((info as RawInfo).uri) != "undefined";
 }
 
-function isDBMSInfo(info: dbInfo): info is DBMSInfo {
+function isDBMSInfo(info: DBInfo): info is DBMSInfo {
     return typeof (info) == "object" && typeof ((info as DBMSInfo).host) != "undefined";
 }
 
-function isSqliteInfo(info: dbInfo): info is SqliteInfo {
+function isSqliteInfo(info: DBInfo): info is SqliteInfo {
     return typeof (info) == "object" && typeof ((info as SqliteInfo).path) != "undefined";
 }
 
 class DbManager {
     static #instance: DbManager | null;
     static #isConstructing = false;
-
 
     #sequelize: Sequelize;
     #isConnected: boolean = false;
@@ -28,7 +32,7 @@ class DbManager {
      * 
      * @param {dbINfo} dbData The connection information for the database
      */
-    constructor(dbData: dbInfo) {
+    constructor(dbData: DBInfo) {
         if (!DbManager.#isConstructing) {
             throw new Error("Cannot use DBManager's constructor, should use GetInstance() instead")
         }
@@ -45,10 +49,12 @@ class DbManager {
         }
 
         else if (isDBMSInfo(dbData)) {
-            sequelizeConnectionString = `${dbData.type}://${dbData.username}:${dbData.password}@${dbData.host}:${dbData.port}/${dbData.database}`;
+            sequelizeConnectionString = typeof(dbData.port) == "undefined" ? 
+            `${dbData.type}://${dbData.username}:${dbData.password}@${dbData.host}/${dbData.database}`
+            : `${dbData.type}://${dbData.username}:${dbData.password}@${dbData.host}:${dbData.port}/${dbData.database}`;
         }
 
-        this.#sequelize = new Sequelize(sequelizeConnectionString, {logging: false});
+        this.#sequelize = new Sequelize(sequelizeConnectionString, { logging: false });
     }
 
 
@@ -74,7 +80,7 @@ class DbManager {
         return false;
     }
 
-    static getInstance(dbData: dbInfo): DbManager {
+    static getInstance(dbData: DBInfo): DbManager {
         if (DbManager.#instance == null) {
             DbManager.#isConstructing = true;
             DbManager.#instance = new DbManager(dbData);
@@ -83,8 +89,25 @@ class DbManager {
         return DbManager.#instance;
     }
 
-    getSequelize(): Sequelize{
-        return this.#sequelize;
+    async setupModels() {
+
+        await User.init(User.modelAttributes, {sequelize: this.#sequelize});
+        await Artist.init(Artist.modelAttributes, {sequelize: this.#sequelize, timestamps: false});
+        await Album.init(Album.modelAttributes, {sequelize: this.#sequelize, timestamps: false});
+        await Track.init(Track.modelAttributes, {sequelize: this.#sequelize, timestamps: false});
+        await Genre.init(Genre.modelAttributes, {sequelize: this.#sequelize, timestamps: false});
+
+        // Declaring associations
+        Album.hasMany(Track, { foreignKey: "albumId" });
+        Track.belongsTo(Album, {foreignKey: "albumId"});
+
+        Track.belongsToMany(Genre, { through: "TrackGenres", foreignKey: "trackId", timestamps: false});
+        Genre.belongsToMany(Track, { through: "TrackGenres", foreignKey: "genreId", timestamps: false});
+
+        Artist.hasMany(Track, {foreignKey: "artistId", sourceKey: "id"});
+        Track.belongsTo(Artist, { foreignKey: "artistId"});
+
+        await this.#sequelize.sync();
     }
 }
 

@@ -1,5 +1,6 @@
 
 
 export enum ERR_CODES{
-    NO_ERR
+    NO_ERR,
+    DB_CONNECTION_FAILED
 }

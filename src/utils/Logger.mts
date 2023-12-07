@@ -11,24 +11,23 @@ export enum LOG_LEVEL {
 export class Logger {
     static logLevel = 0;
 
-    static log(msg: string) {
+    static log(msg: any) {
         if (Logger.logLevel >= LOG_LEVEL.INFO){
-            console.log("Log level: ", Logger.logLevel);
             console.log("\x1b[32m[Info] ", msg, "\x1b[0m");
         }
     }
 
-    static warn(msg: string) {
+    static warn(msg: any) {
         if (Logger.logLevel >= LOG_LEVEL.WARN)
             console.log("\x1b[33m[Debug - Warning] ", msg, "\x1b[0m")
     }
 
-    static err(msg: string) {
+    static err(msg: any) {
         if (Logger.logLevel >= LOG_LEVEL.ERROR)
             console.log("\x1b[31m[Error] ", msg, "\x1b[0m")
     }
 
-    static dLog(msg: string) {
+    static dLog(msg: any) {
         if (Logger.logLevel >= LOG_LEVEL.DEBUG)
             console.log("\x1b[37m[Debug] ", msg, "\x1b[0m")
     }

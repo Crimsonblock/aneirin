@@ -6,6 +6,7 @@ import Track from "./models/Track.js";
 import Genre from "./models/Genre.js";
 import Artist from "./models/Artists.js";
 import User from "./models/User.js";
+import { Logger } from "./utils/Logger.mjs";
 
 
 function isRawInfo(info: DBInfo): info is RawInfo {
@@ -63,7 +64,8 @@ class DbManager {
             await this.#sequelize.authenticate();
             return true;
         } catch (error) {
-            console.error('Unable to connect to the database:', error);
+            Logger.err('Unable to connect to the database: '+ error);
+            Logger.err(error);
         }
         return false;
     }
@@ -74,7 +76,8 @@ class DbManager {
             DbManager.#instance = null;
             return true;
         } catch (error) {
-            console.error('Unable to close the database:', error);
+            Logger.err('Unable to close the database');
+            Logger.err(error);
         }
         DbManager.#instance = null;
         return false;

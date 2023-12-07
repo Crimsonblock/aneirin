@@ -2,14 +2,20 @@ import process from "process";
 import { DBInfo } from "../DbManager.js";
 import { LOG_LEVEL, Logger } from "./Logger.mjs";
 import { Dialect } from "sequelize";
+import { existsSync, mkdirSync, readFileSync } from "fs";
+import path from "path";
+
+
+const CONFIG_FOLDER = "./config"
+
 
 interface IDBUserInfo {
     username: string,
     password?: string
 }
 
-interface IEnvVars {
-    DBInfo?: DBInfo
+interface IConfig{
+    dbInfo?: DBInfo
 }
 
 export function processEnvironmentVariables(): DBInfo | void {
@@ -128,4 +134,27 @@ function processLogLevelEnv(): void {
             Logger.logLevel = LOG_LEVEL.INFO;
             break;
     }
+}
+
+export function getConfig(): IConfig{
+    var config: IConfig = {}
+
+    if(!existsSync(CONFIG_FOLDER))
+        mkdirSync(CONFIG_FOLDER);
+    
+    if(!existsSync(path.join(CONFIG_FOLDER, "config.json"))){
+        var envDbInfo = processEnvironmentVariables()
+        if(typeof(envDbInfo) != "undefined")
+            config.dbInfo = envDbInfo;
+    }
+    else{
+        config = JSON.parse(readFileSync(path.join(CONFIG_FOLDER, "config.json")).toString());
+    }
+
+    return config;
+}
+
+
+export async function saveConfig(config: IConfig): Promise<void> {
+    
 }

@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "test": "jest",
-    "compile": "tsc"
+    "compile": "tsc",
+    "clean": "rm -Rf build config"
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",

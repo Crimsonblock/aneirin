@@ -1,6 +1,14 @@
-import { Model, DataTypes } from "sequelize";
+import { Model, DataTypes, CreationOptional, InferAttributes, InferCreationAttributes } from "sequelize";
 
-export default class User extends Model {
+export default class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
+
+    declare id: CreationOptional<typeof DataTypes.UUID>;
+    declare username: string;
+    declare password: string;
+    declare salt: string;
+    declare isAdmin: boolean;
+
+
 
     static modelAttributes = {
         id:{

@@ -1,7 +1,8 @@
 import process from "process";
-import { IConfig, getConfig, processEnvironmentVariables, saveConfig } from "../src/utils/utils.mts";
+import { configApp, IConfig, getConfig, processEnvironmentVariables, saveConfig } from "../src/utils/utils.mts";
 import { LOG_LEVEL, Logger } from "../src/utils/Logger.mts";
 import { existsSync, readFileSync, rmSync, rmdirSync, writeFileSync } from "fs";
+import DbManager from "../src/DbManager.mts";
 
 describe("Checks the utils process variables works as expected", () => {
     
@@ -127,11 +128,12 @@ describe("Checks getConfig and saveConfig work as expected", ()=>{
     })
     
     afterEach(()=>{
-        try{
+        if(existsSync("./config/config.json"))
             rmSync("./config/config.json");
-        }
-        catch(e){
-        }
+
+        if(existsSync("./test.sqlite"))
+            rmSync("./test.sqlite");
+
     })
     
     
@@ -208,6 +210,77 @@ describe("Checks getConfig and saveConfig work as expected", ()=>{
             }
         });
     });
+
+    it("Should return wizard parameters for both the db and the user", ()=>{
+        expect(configApp({})).toEqual({
+            provideDbWizard: true,
+            provudeUserWizard: true
+        });
+    });
+
+    it("Should return wizard parameters with provide db disabled", ()=>{
+        expect(configApp({
+            dbInfo:{
+                type:"sqlite",
+                path: "test.sqlite"
+            }
+        })).toEqual({
+            provideDbWizard: false,
+            provideUserWizard: true
+        });
+    })
+
+    it("Should created DB file", ()=>{
+        configApp({
+            dbInfo: {
+                type:"sqlite",
+                path: "test.sqlite"
+            }
+        });
+
+        expect(existsSync("./test.sqlite")).toBe(true);
+    })
+
+    it("Should return wizard parameters with the whole wizard disabled when user is specified in the environment variables", ()=>{
+        process.env.USERNAME = "test";
+        process.env.PASSWORD = "test";
+
+        var config: IConfig = {
+            dbInfo: {
+                type: "sqlite",
+                path: "tests.sqlite"
+            }
+        }
+
+        expect(configApp(config)).toEqual({
+            provideDbWizard: false,
+            provideUserWizard: false
+        })
+    });
+
+    it("Should return wizard parameters with the whole wizard disabled when a user is already present in the database", async()=>{
+        
+        // Get the config file
+        var config = {
+            dbInfo:{
+                type: "sqlite",
+                path: "test.sqlite"
+            }
+        }
+
+        // 
+        var dbMan : DbManager = DbManager.getInstance(config.dbInfo);
+        if(await dbMan.connect()){
+            dbMan.setupModels();
+            dbMan.close();
+
+            
+        }
+        else{
+            throw new Error("Unable to connect to file db");
+        }
+    });
+
     
 });
 

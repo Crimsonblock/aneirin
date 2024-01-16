@@ -18,6 +18,11 @@ export interface IConfig{
     dbInfo?: DBInfo
 }
 
+export interface ISetupWizardParameters{
+    provideDbWizard: boolean,
+    provideUserWizard: boolean
+}
+
 export function processEnvironmentVariables(): DBInfo | void {
     processLogLevelEnv();
     
@@ -160,7 +165,7 @@ export function getConfig(): IConfig{
 }
 
 
-export  async function saveConfig(config: IConfig): Promise<void> {
+export async function saveConfig(config: IConfig): Promise<void> {
     
     return new Promise<void>((resolve, reject)=>{
         if(typeof(config) != "object")
@@ -172,3 +177,9 @@ export  async function saveConfig(config: IConfig): Promise<void> {
     })
     
 }
+
+export function configApp(config: IConfig): ISetupWizardParameters{
+    
+    
+} 
+

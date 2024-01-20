@@ -1,48 +1,49 @@
 import path from "path";
+import process from "process";
 import { Logger, LOG_LEVEL } from "./utils/Logger.mjs";
-import { IConfig, getConfig } from "./utils/utils.mjs";
+import { IConfig, configApp, getConfig } from "./utils/utils.mjs";
 import { existsSync, readFileSync, readSync } from "fs";
 import express from "express";
 import DbManager from "./DbManager.mjs";
 import { ERR_CODES } from "./ErrCodes.js";
+import { DBInfo } from "./DbManager.js";
+import User from "./models/User.js";
 
 const CONFIG_FOLDER = "./config";
 
-let db: DbManager;
 
-var config: IConfig = getConfig();
+var config: IConfig = await getConfig();
 
-Logger.logLevel = LOG_LEVEL.DEBUG;
+var configWizard = await configApp(config);
+Logger.dLog(configWizard);
 
-if(typeof(config.dbInfo) != "undefined"){
-    db = DbManager.getInstance(config.dbInfo);
-
-    Logger.dLog("Connecting to the database");
-    if(!await db.connect()){
-        Logger.err("Could not connect to the database");
-        process.exit(ERR_CODES.DB_CONNECTION_FAILED);
-    }
-
-    Logger.dLog("Setting up database models");
-    await db.setupModels();
-}
-
-
-Logger.dLog("Configugration: ")
-Logger.dLog(config);
+/*if(configWizard.provideUserWizard && ! configWizard.provideDbWizard){
+    Logger.dLog("Creating default user");
+    User.create({
+        username: "test",
+        password: "test",
+        salt: "test",
+        isAdmin: true
+    })
+}*/
 
 const app = express();
 
 app.get("/", (req, res) =>{
-    if(typeof(config.dbInfo) == "undefined")
-        res.send("Setup Wizard");
-    else
-        res.send("Application");
+    var response = "";
+    if(!configWizard.provideDbWizard && ! configWizard.provideUserWizard)
+        response = "Application"
+    else{
+        if(configWizard.provideDbWizard)
+            response += "Db Wizard"
+        if(configWizard.provideUserWizard)
+            response += " User Wizard";
+    }
+
+    res.send(response);
 })
 
 
 app.listen(3000, ()=>{
     Logger.log("Server started");
 });
-
-

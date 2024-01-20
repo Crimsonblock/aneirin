@@ -47,7 +47,6 @@ export default class Album extends Model<InferAttributes<Album>, InferCreationAt
         tracks: Association<Album, Track>
     }
 
-
     static modelAttributes = {
         id: {
             type: DataTypes.INTEGER,

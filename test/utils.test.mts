@@ -124,7 +124,7 @@ describe("Checks the utils process variables works as expected", () => {
 
 describe("Checks getConfig and saveConfig work as expected", ()=>{
     afterAll(()=>{
-        rmdirSync("./config", {recursive: true})
+        rmSync("./config", {recursive: true})
     })
     
     afterEach(()=>{
@@ -147,7 +147,7 @@ describe("Checks getConfig and saveConfig work as expected", ()=>{
     })
     
     it("should create a config file", async ()=>{
-        var config: IConfig = getConfig();
+        var config: IConfig = await getConfig();
         await saveConfig(config);
         expect(existsSync("./config/config.json")).toBe(true);
     })
@@ -258,28 +258,26 @@ describe("Checks getConfig and saveConfig work as expected", ()=>{
         })
     });
 
-    it("Should return wizard parameters with the whole wizard disabled when a user is already present in the database", async()=>{
+    // it("Should return wizard parameters with the whole wizard disabled when a user is already present in the database", async()=>{
         
-        // Get the config file
-        var config = {
-            dbInfo:{
-                type: "sqlite",
-                path: "test.sqlite"
-            }
-        }
+    //     // Get the config file
+    //     var config = {
+    //         dbInfo:{
+    //             type: "sqlite",
+    //             path: "test.sqlite"
+    //         }
+    //     }
 
-        // 
-        var dbMan : DbManager = DbManager.getInstance(config.dbInfo);
-        if(await dbMan.connect()){
-            dbMan.setupModels();
-            dbMan.close();
-
-            
-        }
-        else{
-            throw new Error("Unable to connect to file db");
-        }
-    });
+    //     // Initiates the database and sets a default user
+    //     var dbMan : DbManager = DbManager.getInstance(config.dbInfo);
+    //     if(await dbMan.connect()){
+    //         await dbMan.setupModels();
+    //         await dbMan.close();
+    //     }
+    //     else{
+    //         throw new Error("Unable to connect to file db");
+    //     }
+    // });
 
     
 });

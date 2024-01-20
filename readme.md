@@ -24,26 +24,26 @@ Readme:
 - [ ] Write the "Run Aneirin from source" section in the readme  
 
 Server: 
-- [x] Function to process uploaded files
+
 - [ ] Admin Endpoints:
-  - [x] Endpoint to receive file chunk and write it to the file
-  - [x] Endpoint to start processing uploaded files
+  - [ ] Endpoint to receive file chunk and write it to the file
+  - [ ] Endpoint to start processing uploaded files
   - [ ] Endpoint to remove tracks
   - [ ] Endpoint to update a track
   - [ ] Endpoint to remove artists and related work
   - [ ] Endpoint to update an artist
-- [x] Basic Player endpoints:
-  - [x] Endpoint to retrieve tracks information
-  - [x] Endpoint to search for tracks/album/artists in the database
-  - [x] Endpoint to retrieve MPD
-  - [x] Endpoint to retrieve a track's segment
-  - [x] Endpoint to retrieve album information
-  - [x] Endpoint to retrieve Artist's information
-  - [x] Endpoint to retrieve Genre informations 
+- [ ] Basic Player endpoints:
+  - [ ] Endpoint to retrieve tracks information
+  - [ ] Endpoint to search for tracks/album/artists in the database
+  - [ ] Endpoint to retrieve MPD
+  - [ ] Endpoint to retrieve a track's segment
+  - [ ] Endpoint to retrieve album information
+  - [ ] Endpoint to retrieve Artist's information
+  - [ ] Endpoint to retrieve Genre informations 
 - [ ] Add support for MySql/MariaDB
 
 Admin client:
-- [x] Add upload file functionality with http
+- [ ] Add upload file functionality with http
 - [ ] Add Album management page
 - [ ] Add Artists management page
 - [ ] Functionalities:

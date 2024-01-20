@@ -1,15 +1,16 @@
 import process from "process";
 import { DBInfo } from "../DbManager.js";
-import { LOG_LEVEL, Logger } from "./Logger.mjs";
+import { LOG_LEVEL, Logger, dLog } from "./Logger.mjs";
 import { Dialect } from "sequelize";
 import { existsSync, mkdirSync, readFileSync, writeFile, writeFileSync } from "fs";
 import path from "path";
-
+import DbManager from "../DbManager.mjs";
+import User from "../models/User.js";
 
 const CONFIG_FOLDER = "./config"
 
 
-interface IDBUserInfo {
+interface IUserInfo {
     username: string,
     password?: string
 }
@@ -23,9 +24,12 @@ export interface ISetupWizardParameters{
     provideUserWizard: boolean
 }
 
-export function processEnvironmentVariables(): DBInfo | void {
-    processLogLevelEnv();
-    
+/**
+ * This function extracts the information necessary to run from the environment variables, if they exist.
+ * 
+ * @returns DBInfo The information of the database.
+ */
+export function processEnvironmentVariables(): DBInfo | void {    
     if (typeof (process.env.DB_TYPE) == "undefined") return;
     
     var dbInfo = getDbEnv();
@@ -35,7 +39,12 @@ export function processEnvironmentVariables(): DBInfo | void {
     
 }
 
-
+/**
+ * This function extracts the database information from the environment variables, if they exist.
+ * 
+ * @returns a DBInfo struct, containing the database connection information, contained in the environment variables. 
+ * When no environment variables are present, null is returned.
+ */
 function getDbEnv(): DBInfo | null {
     var dbInfo: DBInfo = { uri: "This will throw an error" };
     
@@ -63,52 +72,65 @@ function getDbEnv(): DBInfo | null {
     
     // DBMS
     else {
-        if (typeof (process.env.DB_HOST) == "undefined") {
-            Logger.dLog("Database Host not provided, will be setup in web wizard");
-            return null;
-        }
-        
-        if (typeof (process.env.DB_TYPE) == "undefined") {
-            Logger.dLog("Database type not provided, will be setup in the web wizard");
-            return null;
-        }
-        
-        if (typeof (process.env.DB_NAME) == "undefined") {
-            Logger.dLog("Database type not provided, will be setup in the web wizard");
-            return null;
-        }
-        
-        var dbUser = getDbUserEnv();
-        
-        if (dbUser == null) {
-            Logger.dLog("Database user not provided, will be setup in the web wizard");
-            return null;
-        }
-        
-        else {
-            if (typeof (dbUser.password) == "undefined") {
-                Logger.dLog("Database password not provided, will be setup in the web wizard");
-                return null;
-            }
-            
-            dbInfo = {
-                type: (process.env.DB_TYPE as Dialect),
-                username: dbUser.username,
-                password: dbUser.password,
-                host: process.env.DB_HOST,
-                database: process.env.DB_NAME
-            }
-            
-            if (typeof (process.env.DB_PORT) != "undefined")
-            dbInfo.port = parseInt(process.env.DB_PORT);
-        }
-        
+        return getDBMSInfo();
     }
     
     return dbInfo;
 }
 
-function getDbUserEnv(): IDBUserInfo | null {
+/**
+ * This function retrievees the database connection informatio from the environment variables.
+ * @returns dbInfo the DBMSInfo that contains the connection information
+ */
+function getDBMSInfo(): DBInfo | null{
+    if (typeof (process.env.DB_HOST) == "undefined") {
+        Logger.dLog("Database Host not provided, will be setup in web wizard");
+        return null;
+    }
+    
+    if (typeof (process.env.DB_TYPE) == "undefined") {
+        Logger.dLog("Database type not provided, will be setup in the web wizard");
+        return null;
+    }
+    
+    if (typeof (process.env.DB_NAME) == "undefined") {
+        Logger.dLog("Database type not provided, will be setup in the web wizard");
+        return null;
+    }
+    
+    var dbUser = getDbUserEnv();
+    
+    if (dbUser == null) {
+        Logger.dLog("Database user not provided, will be setup in the web wizard");
+        return null;
+    }
+
+    else {
+        if (typeof (dbUser.password) == "undefined") {
+            Logger.dLog("Database password not provided, will be setup in the web wizard");
+            return null;
+        }
+        
+        var dbInfo: DBInfo = {
+            type: (process.env.DB_TYPE as Dialect),
+            username: dbUser.username,
+            password: dbUser.password,
+            host: process.env.DB_HOST,
+            database: process.env.DB_NAME
+        }
+        
+        if (typeof (process.env.DB_PORT) != "undefined")
+        dbInfo.port = parseInt(process.env.DB_PORT);
+        
+        return dbInfo;
+    }
+}
+
+/**
+ * Extracts the database connection information from the environment variables.
+ * @returns IUserInfo the database connection information if found.
+ */
+function getDbUserEnv(): IUserInfo | null {
     if (typeof (process.env.DB_USERNAME) == "undefined") {
         return null;
     }
@@ -118,6 +140,9 @@ function getDbUserEnv(): IDBUserInfo | null {
     }
 }
 
+/**
+ * Extracts the log level from the environment variables and set it up
+ */
 function processLogLevelEnv(): void {
     switch (process.env.LOG_LEVEL) {
         case "NONE": 
@@ -141,7 +166,11 @@ function processLogLevelEnv(): void {
     }
 }
 
-export function getConfig(): IConfig{
+/**
+ * Retrieves the config from the config file if it exists. Otherwise, creates a default config and saves it in the config file.
+ * @returns IConfig the configuration struct
+ */
+export async function getConfig(): Promise<IConfig>{
     var config: IConfig = {}
     var configFileExists: boolean = true;
     
@@ -150,7 +179,9 @@ export function getConfig(): IConfig{
     
     if(!existsSync(path.join(CONFIG_FOLDER, "config.json"))){
         configFileExists = false;
+        
         var envDbInfo = processEnvironmentVariables()
+        
         if(typeof(envDbInfo) != "undefined")
         config.dbInfo = envDbInfo;
     }
@@ -158,15 +189,19 @@ export function getConfig(): IConfig{
         config = JSON.parse(readFileSync(path.join(CONFIG_FOLDER, "config.json")).toString()) as IConfig;
     }
     
+
     if(!configFileExists)
-    saveConfig(config)
-    
+    await saveConfig(config)
+
     return config;
 }
 
-
+/**
+ * This function saves a configuration struct passed as argument into the configuration file.
+ * @param config The configuration struct to save
+ * @returns A promise that solves when the file is succesfully saved
+ */
 export async function saveConfig(config: IConfig): Promise<void> {
-    
     return new Promise<void>((resolve, reject)=>{
         if(typeof(config) != "object")
             reject("saveConfig expects a parameter of type Object implementing interface IConfig");
@@ -178,8 +213,38 @@ export async function saveConfig(config: IConfig): Promise<void> {
     
 }
 
-export function configApp(config: IConfig): ISetupWizardParameters{
-    
-    
-} 
 
+/**
+ * This function sets the application up (opens the database connection, ...) given a config passed as argument.
+ * It then returns an ISetupWizardParameters object that defines if the setup wizard needs to be displayed in the web browser. 
+ * 
+ * @param config The config struct to base the setup on
+ * @returns ISetupWizardParameters an object containing the setup wizards to be displayed.
+ */
+export async function configApp(config: IConfig): Promise<ISetupWizardParameters>{    
+    Logger.dLog("Configuring application...")
+    processLogLevelEnv();
+
+    var setupWizardParams: ISetupWizardParameters = {
+        provideDbWizard: true,
+        provideUserWizard: true
+    }
+
+    if(typeof(config.dbInfo) != "undefined"){
+        var dbMan: DbManager = DbManager.getInstance(config.dbInfo);
+
+        if(await dbMan.connect()){
+            Logger.dLog("connected to db");
+            setupWizardParams.provideDbWizard = false;
+
+            await dbMan.setupModels();
+            Logger.dLog("Db initialized");
+    
+            var t = await User.findOne({where: {isAdmin: true}});
+            setupWizardParams.provideUserWizard = t == null;
+        }
+    }
+
+    Logger.dLog("Application successfully configured");
+    return setupWizardParams;
+}

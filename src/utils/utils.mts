@@ -206,7 +206,7 @@ export async function saveConfig(config: IConfig): Promise<void> {
         if(typeof(config) != "object")
             reject("saveConfig expects a parameter of type Object implementing interface IConfig");
         
-        writeFile("./config/config.json", JSON.stringify(config), ()=>{
+        writeFile(path.join(CONFIG_FOLDER, "config.json"), JSON.stringify(config, null, 4), ()=>{
             resolve();
         });
     })

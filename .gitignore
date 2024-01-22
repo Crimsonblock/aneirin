@@ -4,3 +4,4 @@ virtual_folders
 build
 databases.json
 *.sqlite
+sequelize-cli

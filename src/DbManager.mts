@@ -1,5 +1,5 @@
 import { Sequelize, Options, Model } from "sequelize"
-import { DBInfo, RawInfo, DBMSInfo, SqliteInfo } from "./DbManager.js";
+import { DBInfo, RawInfo, DBMSInfo, SqliteInfo, ISequelizeDBMSInfo, ISequelizeSqliteInfo } from "./DbManager.js";
 
 import Album from "./models/Album.js";
 import Track from "./models/Track.js";
@@ -7,17 +7,21 @@ import Genre from "./models/Genre.js";
 import Artist from "./models/Artists.js";
 import User from "./models/User.js";
 import { Logger } from "./utils/Logger.mjs";
+import { exec } from "child_process";
+import { CONFIG_FOLDER } from "./index.mjs";
+import { writeFileSync } from "fs";
+import path from "path";
 
 
-function isRawInfo(info: DBInfo): info is RawInfo {
+export function isRawInfo(info: DBInfo): info is RawInfo {
     return typeof (info) == "object" && typeof ((info as RawInfo).uri) != "undefined";
 }
 
-function isDBMSInfo(info: DBInfo): info is DBMSInfo {
+export function isDBMSInfo(info: DBInfo): info is DBMSInfo {
     return typeof (info) == "object" && typeof ((info as DBMSInfo).host) != "undefined";
 }
 
-function isSqliteInfo(info: DBInfo): info is SqliteInfo {
+export function isSqliteInfo(info: DBInfo): info is SqliteInfo {
     return typeof (info) == "object" && typeof ((info as SqliteInfo).path) != "undefined";
 }
 
@@ -26,14 +30,14 @@ class DbManager {
     static #isConstructing = false;
 
     #sequelize: Sequelize;
-    #isConnected: boolean = false;
+    static isConnected: boolean = false;
 
     /** 
      * Constructs the class. Simulates a private constructor
      * 
      * @param {dbINfo} dbData The connection information for the database
      */
-    constructor(dbData: DBInfo) {
+    constructor(dbInfo: DBInfo) {
         if (!DbManager.#isConstructing) {
             throw new Error("Cannot use DBManager's constructor, should use GetInstance() instead")
         }
@@ -41,27 +45,30 @@ class DbManager {
         var sequelizeConnectionString = "";
 
         // Initializes the connection based on the type of dbInfo
-        if (isRawInfo(dbData)) {
-            sequelizeConnectionString = dbData.uri;
+        if (isRawInfo(dbInfo)) {
+            sequelizeConnectionString = dbInfo.uri;
         }
 
-        else if (isSqliteInfo(dbData)) {
-            sequelizeConnectionString = `sqlite:${dbData.path}`;
+        else if (isSqliteInfo(dbInfo)) {
+            sequelizeConnectionString = `sqlite:${dbInfo.path}`;
         }
 
-        else if (isDBMSInfo(dbData)) {
-            sequelizeConnectionString = typeof(dbData.port) == "undefined" ? 
-            `${dbData.type}://${dbData.username}:${dbData.password}@${dbData.host}/${dbData.database}`
-            : `${dbData.type}://${dbData.username}:${dbData.password}@${dbData.host}:${dbData.port}/${dbData.database}`;
+        else if (isDBMSInfo(dbInfo)) {
+            sequelizeConnectionString = typeof(dbInfo.port) == "undefined" ? 
+            `${dbInfo.type}://${dbInfo.username}:${dbInfo.password}@${dbInfo.host}/${dbInfo.database}`
+            : `${dbInfo.type}://${dbInfo.username}:${dbInfo.password}@${dbInfo.host}:${dbInfo.port}/${dbInfo.database}`;
         }
 
         this.#sequelize = new Sequelize(sequelizeConnectionString, { logging: false });
+
+        this.#setupSequelizeInfo(dbInfo)
     }
 
 
     async connect(): Promise<boolean> {
         try {
             await this.#sequelize.authenticate();
+            DbManager.isConnected = true;
             return true;
         } catch (error) {
             Logger.err('Unable to connect to the database: '+ error);
@@ -84,11 +91,17 @@ class DbManager {
     }
 
     static getInstance(dbData: DBInfo): DbManager {
+
+        // Creates the database manager if none is present
         if (DbManager.#instance == null) {
             DbManager.#isConstructing = true;
             DbManager.#instance = new DbManager(dbData);
         }
 
+        return DbManager.#instance;
+    }
+
+    static getExistingInstance(): DbManager | null {
         return DbManager.#instance;
     }
 
@@ -111,6 +124,80 @@ class DbManager {
         Track.belongsTo(Artist, { foreignKey: "artistId"});
 
         await this.#sequelize.sync();
+    }
+
+
+    #setupSequelizeInfo(dbInfo: DBInfo): void{
+        var sequelizeInfo: ISequelizeSqliteInfo | ISequelizeDBMSInfo;
+        
+        if(isSqliteInfo(dbInfo)){
+            sequelizeInfo = {
+                dialect: "sqlite",
+                storage: dbInfo.path
+            }
+
+            writeFileSync(path.join(CONFIG_FOLDER, "databases.json"), JSON.stringify({production: sequelizeInfo}, null, 4));
+        }
+        else if(isDBMSInfo(dbInfo)){
+            sequelizeInfo =  {
+                dialect: dbInfo.type,
+                username: dbInfo.username,
+                password: dbInfo.password,
+                host: dbInfo.host,
+                database: dbInfo.database,
+            }
+
+            if(typeof(dbInfo.port) != "undefined"){
+                sequelizeInfo.port = dbInfo.port;
+            }
+
+            writeFileSync(path.join(CONFIG_FOLDER, "databases.json"), JSON.stringify({production: sequelizeInfo}, null, 4));
+        }
+        else if(isRawInfo(dbInfo)){
+            var dbmsRegex = /([a-z]*):\/\/([\w]*):([\w]*)@([\w\.]*)(:[0-9]+)?\/(\w*)/i
+            var sqliteRegex = /([a-z]*)(\:\/\/)?(.*)/i
+
+            var dbInfoMatch = dbInfo.uri.match(dbmsRegex);
+            if(dbInfoMatch != null){
+                sequelizeInfo = {
+                    dialect: dbInfoMatch[1],
+                    username: dbInfoMatch[2],
+                    password: dbInfoMatch[3],
+                    host: dbInfoMatch[4],
+                    database: dbInfoMatch[6]
+                }
+
+                if(dbInfoMatch[5] != null){
+                    sequelizeInfo.port = parseInt(dbInfoMatch[5].replace(":", ""));
+                }
+
+                writeFileSync(path.join(CONFIG_FOLDER, "databases.json"), JSON.stringify({production: sequelizeInfo}, null, 4));
+            }
+            else{
+                dbInfoMatch = dbInfo.uri.match(sqliteRegex);
+                if(dbInfoMatch != null){
+                    sequelizeInfo = {
+                        dialect: "sqlite",
+                        storage: dbInfoMatch[3]
+                    }
+
+                    writeFileSync(path.join(CONFIG_FOLDER, "databases.json"), JSON.stringify({production: sequelizeInfo}, null, 4));
+                }
+
+            }
+        }
+
+        
+    }
+
+    static migrate(): Promise<void>{
+        return new Promise((resolve, reject) => {
+            exec(
+                'npx sequelize db:migrate --env production',
+                {env: process.env},
+                err=>{err? reject(err) : resolve()}
+            )
+        })
     }
 }
 

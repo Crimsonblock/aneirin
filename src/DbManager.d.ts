@@ -23,3 +23,17 @@ export interface RawInfo {
 }
 
 export type DBInfo = SqliteInfo | DBMSInfo | RawInfo;
+
+export interface ISequelizeDBMSInfo{
+    dialect: string,
+    username: string,
+    password: string,
+    host: string,
+    database: string,
+    port?: number
+}
+
+export interface ISequelizeSqliteInfo{
+    dialect: "sqlite",
+    storage: string
+}

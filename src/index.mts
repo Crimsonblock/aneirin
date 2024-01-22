@@ -5,11 +5,12 @@ import { IConfig, configApp, getConfig } from "./utils/utils.mjs";
 import { existsSync, readFileSync, readSync } from "fs";
 import express from "express";
 import DbManager from "./DbManager.mjs";
-import { ERR_CODES } from "./ErrCodes.js";
+import { ERR_CODES } from "./AppErrCodes.js";
 import { DBInfo } from "./DbManager.js";
 import User from "./models/User.js";
+import Cithar from "./api/Cithar.js";
 
-const CONFIG_FOLDER = "./config";
+export const CONFIG_FOLDER = "./config";
 
 
 var config: IConfig = await getConfig();
@@ -27,7 +28,11 @@ Logger.dLog(configWizard);
     })
 }*/
 
+const citharApi = new Cithar(configWizard.provideDbWizard, configWizard.provideUserWizard);
 const app = express();
+
+app.use("/api/cithar", citharApi.getApi());
+
 
 app.get("/", (req, res) =>{
     var response = "";
@@ -40,7 +45,7 @@ app.get("/", (req, res) =>{
             response += " User Wizard";
     }
 
-    res.send(response);
+    res.send(response+"\n");
 })
 
 

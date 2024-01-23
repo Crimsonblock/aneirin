@@ -8,7 +8,7 @@ import { Request } from "express";
 // (req: any, res: any, next: any) => {}
 
 export interface AuthenticatedRequest extends Request{
-    user?: User
+    user: User
 }
 
 
@@ -17,7 +17,7 @@ export function requireAuthentication(){
     return async (req: AuthenticatedRequest, res: any, next: any)=>{
         if(typeof(req.headers.authorization) == "undefined"){
             res.status(HTTP_CODES.UNAUTHORIZED);
-            res.send();
+            res.send("Unauthorized");
             return;
         }
     
@@ -27,7 +27,7 @@ export function requireAuthentication(){
     
         if(bearer == null){
             res.status(HTTP_CODES.UNAUTHORIZED);
-            res.send();
+            res.send("Unauthorized");
             return;
         }
     
@@ -52,6 +52,32 @@ export function requireAuthentication(){
             res.send("Internal server error");
         }
         req.user = user;
+        next();
+    }
+}
+
+export function requireAdmin(){
+    return async (req: AuthenticatedRequest, res: any, next: any)=>{
+        if(req.user.isAdmin){
+            next();
+        }
+        else{
+            res.status(HTTP_CODES.FORBIDDEN);
+            res.send("Forbidden");
+        }
+    }
+}
+
+export function removeHeaders(headers: string[]){
+    return (req: any, res: any, next: any) => {
+        var send = res.send;
+        res.send = function(...args: any[]){
+            for(var i=0; i < headers.length; i++){
+                res.removeHeader(headers[i]);
+            }
+
+            send.call(this, ...args);
+        }
         next();
     }
 }

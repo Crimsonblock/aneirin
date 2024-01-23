@@ -9,6 +9,7 @@ import { ERR_CODES } from "./AppErrCodes.js";
 import { DBInfo } from "./DbManager.js";
 import User from "./models/User.js";
 import Cithar from "./api/Cithar.js";
+import { removeHeaders } from "./utils/MiddleWares.js";
 
 export const CONFIG_FOLDER = "./config";
 
@@ -31,9 +32,9 @@ Logger.dLog(configWizard);
 
 const citharApi = new Cithar(configWizard.provideDbWizard, configWizard.provideUserWizard);
 const app = express();
+app.use(removeHeaders(["X-Powered-By"]));
 
 app.use("/api/cithar", citharApi.getApi());
-
 
 app.get("/", (req, res) =>{
     var response = "";

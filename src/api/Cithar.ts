@@ -29,11 +29,12 @@ import { Op } from "sequelize";
 *      - Change user password* %
 * 
 *  User:
-*      - Change password* % §
-*      - Change email* % §
+*      - Change password* % §   <- Done
+*      - Change email* % §      <- Done
+*      - Change username * % §  <- Done
 *      - Create playlist* % §
 *      - Update playlist* % §
-*      - Login*         
+*      - Login*                 <- Done
 *      - Register*
 *      - Get Salt* §  <- Done
 * 
@@ -55,23 +56,23 @@ import { Op } from "sequelize";
 class Cithar {
     #allowFirstUserCreation = false;
     #allowFirstDbSetup = false;
-
+    
     #authenticationRateLimit: any;
     #apiRateLimit: any;
     
     constructor(allowFirstDbSetup = false, allowFirstUserCreation = false){
         this.#allowFirstUserCreation = allowFirstUserCreation;
         this.#allowFirstDbSetup = allowFirstDbSetup;
-
+        
         this.#authenticationRateLimit = rateLimit({
             windowMs: 1000* 3600, // 1 hour
             limit: 50, // Maximum 50 login attempt per hour
             standardHeaders: 'draft-7',
             legacyHeaders: false
         })
-
+        
         this.#apiRateLimit = rateLimit({
-            windowMs: 1000 *5, // 5 minutes
+            windowMs: 1000 * 5 * 60, // 5 minutes
             limit: 100, // Maximum 100 calls per 5 minutes
             standardHeaders: 'draft-7',
             legacyHeaders: false
@@ -115,7 +116,7 @@ class Cithar {
                 res.status(HTTP_CODES.BAD_REQUEST);
                 res.send("Missing salt\n");
             }
-
+            
             else{
                 // Creates the first admin user in the database
                 try{
@@ -128,7 +129,7 @@ class Cithar {
                     if(typeof(req.body.email) !== "undefined")
                     user.email = req.body.email;
                     await User.create(user);
-
+                    
                     res.status(HTTP_CODES.OK);
                     res.send();
                     this.#allowFirstUserCreation = false;
@@ -152,19 +153,19 @@ class Cithar {
                 res.send("Action not permitted\n");
                 return;
             } 
-
+            
             // Checks if the body is a valid DBInfo object
             else if(isRawInfo(req.body) || isDBMSInfo(req.body) || isSqliteInfo(req.body)) {
                 var dbInfo: DBInfo = req.body;
                 Logger.dLog("Valid db information recieved:");
                 Logger.dLog(dbInfo);
-
+                
                 var dbMan = DbManager.getInstance(dbInfo);
                 
                 Logger.dLog("Performing initial database migration");
                 await DbManager.migrate();
                 Logger.dLog("Done, connecting to the database");
-
+                
                 if(await dbMan.connect()){
                     try{
                         Logger.dLog("Done, setting the models up...");
@@ -172,7 +173,7 @@ class Cithar {
                         var config = await getConfig();
                         config.dbInfo = dbInfo;
                         await saveConfig(config);
-
+                        
                         Logger.dLog("Initial database setup done");
                         res.status(HTTP_CODES.OK);
                         res.send();
@@ -199,7 +200,7 @@ class Cithar {
         
         return adminApi;
     }
-
+    
     createUserApi(): Router{
         var userApi = Router();
         userApi.use(dbManagerMustBeConnected());
@@ -218,7 +219,7 @@ class Cithar {
                 res.status(HTTP_CODES.BAD_REQUEST);
                 res.send("Missing password");
             }
-
+            
             var user: User | null = await User.findOne({
                 // @ts-ignore
                 where:{
@@ -240,7 +241,7 @@ class Cithar {
                         ]
                     }
                 });
-
+                
                 if(user == null){
                     res.status(HTTP_CODES.NOT_FOUND);
                     res.send();
@@ -256,10 +257,10 @@ class Cithar {
                 var authToken = await user.createAuthenticationToken();
                 res.send(btoa(authToken.id.toString()))
             }
-
-
+            
+            
         });
-
+        
         userApi.use("/getSalt", 
         limitMethods(["GET"]), 
         this.#authenticationRateLimit,
@@ -269,7 +270,7 @@ class Cithar {
                 res.send("Missing username");
                 return;
             }
-
+            
             var user: User = await User.findOne({
                 // @ts-ignore
                 where:{
@@ -279,17 +280,59 @@ class Cithar {
                     ]
                 }
             })
-
+            
             if(user == null){
                 res.status(HTTP_CODES.NOT_FOUND);
                 res.send();
                 return;
             }
-
+            
             res.header("Content-Type", "text/plain");
             res.send(user.salt);
         });
-
+        
+        userApi.use("/info",
+        limitMethods(["PUT"]),
+        requireAuthentication(),
+        // this.#apiRateLimit,
+        bodyParser.json(),
+        async (req: AuthenticatedRequest, res: any) =>{
+            if(typeof(req.body.password) === "undefined"){
+                res.status(HTTP_CODES.UNAUTHORIZED);
+                res.send("Missing password");
+                return;
+            }
+            else if(req.body.password !== req.user.password){
+                res.status(HTTP_CODES.UNAUTHORIZED);
+                res.send("Incorrect password");
+                return;
+            }
+            
+            
+            for(var k of Object.keys(req.body)){
+                switch(k){
+                    case "newPassword":
+                        req.user.password = req.body.newPassword;
+                        break;
+                    case "username":
+                        req.user.username = req.body.username;
+                        break;
+                    case "email":
+                        Logger.dLog(req.body.email);
+                        req.user.email = req.body.email;
+                        break;
+                    case "salt":
+                        req.user.salt = req.body.salt;
+                        break;
+                    default:
+                        break;
+                }
+                
+            }
+            await req.user.save();
+            res.send();
+        });
+        
         return userApi;
     }
 }

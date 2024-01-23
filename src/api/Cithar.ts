@@ -1,13 +1,21 @@
 import { Router } from "express";
 import { HTTP_CODES } from "../HTTPCodes.js";
 import bodyParser from "body-parser";
+import {rateLimit} from "express-rate-limit";
+
+
 import User, { IUser } from "../models/User.js";
+
 import { Logger } from "../utils/Logger.mjs";
-import DbManager, { isDBMSInfo, isRawInfo, isSqliteInfo } from "../DbManager.mjs";
 import { getConfig, saveConfig } from "../utils/utils.mjs";
-import { dbManagerMustBeConnected, limitMethods } from "../utils/MiddleWares.js";
+
 import { DBInfo } from "../DbManager.js";
+import DbManager, { isDBMSInfo, isRawInfo, isSqliteInfo } from "../DbManager.mjs";
+
+import { AuthenticatedRequest, dbManagerMustBeConnected, limitMethods, requireAuthentication } from "../utils/MiddleWares.js";
 import { Op } from "sequelize";
+
+
 /**
 * Required api endpoints: 
 *  Admin:
@@ -21,17 +29,17 @@ import { Op } from "sequelize";
 *      - Change user password* %
 * 
 *  User:
-*      - Change password* %
-*      - Change email* %
-*      - Create playlist* %
-*      - Update playlist* %
-*      - Login*     
+*      - Change password* % §
+*      - Change email* % §
+*      - Create playlist* % §
+*      - Update playlist* % §
+*      - Login*         
 *      - Register*
-*      - Get Salt*  <- Done
+*      - Get Salt* §  <- Done
 * 
 *  Playback:
-*      - Retrieve tracks infos*
-*      - Retrieve music (206)*
+*      - Retrieve tracks infos* §
+*      - Retrieve music (206)* §
 * 
 *  Files: 
 *      - Create new file %
@@ -41,15 +49,33 @@ import { Op } from "sequelize";
 *
 *   Endpoints marked with "*" require the database to be connected
 *   Endpoints marked with "%" require the user to be connected, even when the instance is in public mode
+*   Endpoints marked with "§" require the standard rate limit
 */
 
 class Cithar {
     #allowFirstUserCreation = false;
     #allowFirstDbSetup = false;
+
+    #authenticationRateLimit: any;
+    #apiRateLimit: any;
     
     constructor(allowFirstDbSetup = false, allowFirstUserCreation = false){
         this.#allowFirstUserCreation = allowFirstUserCreation;
         this.#allowFirstDbSetup = allowFirstDbSetup;
+
+        this.#authenticationRateLimit = rateLimit({
+            windowMs: 1000* 3600, // 1 hour
+            limit: 50, // Maximum 50 login attempt per hour
+            standardHeaders: 'draft-7',
+            legacyHeaders: false
+        })
+
+        this.#apiRateLimit = rateLimit({
+            windowMs: 1000 *5, // 5 minutes
+            limit: 100, // Maximum 100 calls per 5 minutes
+            standardHeaders: 'draft-7',
+            legacyHeaders: false
+        })
     }
     
     getApi(): Router {
@@ -177,8 +203,13 @@ class Cithar {
     createUserApi(): Router{
         var userApi = Router();
         userApi.use(dbManagerMustBeConnected());
-
-        userApi.use("/authenticate", limitMethods(["POST"]), bodyParser.json(), (req, res) =>{
+        
+        
+        userApi.use("/authenticate", 
+        limitMethods(["POST"]),
+        bodyParser.json(), 
+        this.#authenticationRateLimit,
+        async (req, res) =>{
             if(req.body.username === "undefined"){
                 res.status(HTTP_CODES.BAD_REQUEST);
                 res.send("Missing username");
@@ -188,11 +219,51 @@ class Cithar {
                 res.send("Missing password");
             }
 
+            var user: User | null = await User.findOne({
+                // @ts-ignore
+                where:{
+                    password: req.body.password,
+                    [Op.or]: [
+                        {username: req.body.username},
+                        {email: req.body.username}
+                    ]
+                }
+            });
             
+            if(user == null){
+                user = await User.findOne({
+                    // @ts-ignore
+                    where:{
+                        [Op.or]: [
+                            {username: req.query.username},
+                            {email: req.query.username}
+                        ]
+                    }
+                });
+
+                if(user == null){
+                    res.status(HTTP_CODES.NOT_FOUND);
+                    res.send();
+                }
+                else{
+                    res.status(HTTP_CODES.UNAUTHORIZED);
+                    res.send("Invalid password");
+                }
+            }
+            else{
+                res.status(HTTP_CODES.OK);
+                res.header("Content-Type", "text/plain");
+                var authToken = await user.createAuthenticationToken();
+                res.send(btoa(authToken.id.toString()))
+            }
+
+
         });
 
-
-        userApi.use("/getSalt", limitMethods(["GET"]), async (req, res) =>{
+        userApi.use("/getSalt", 
+        limitMethods(["GET"]), 
+        this.#authenticationRateLimit,
+        async (req, res) =>{
             if(typeof(req.query.username) === "undefined"){
                 res.status(HTTP_CODES.BAD_REQUEST);
                 res.send("Missing username");

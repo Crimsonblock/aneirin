@@ -15,44 +15,55 @@ import {
     HasManyCreateAssociationMixin,
     CreationOptional,
     NonAttribute,
-    Association
+    Association,
+    BelongsToGetAssociationMixin,
+    BelongsToSetAssociationMixin,
+    BelongsToCreateAssociationMixin
 } from "sequelize";
 
 import Track from "./Track.js";
+import Artist from "./Artist.js";
 
 
 export default class Album extends Model<InferAttributes<Album>, InferCreationAttributes<Album>>{
 
     // Album fields
-    declare id: CreationOptional<number>;
+    declare id: CreationOptional<typeof DataTypes.UUID>;
     declare title: string;
     declare cover: string | null;
     declare path: string;
 
     // Tracks association declarations
     declare getTracks: HasManyGetAssociationsMixin<Track>;
-    declare addTrack: HasManyAddAssociationMixin<Track, number>;
-    declare addTracks: HasManyAddAssociationsMixin<Track, number>;
-    declare setTracks: HasManySetAssociationsMixin<Track, number>;
-    declare removeTrack: HasManyRemoveAssociationMixin<Track, number>;
-    declare removeTracks: HasManyRemoveAssociationsMixin<Track, number>;
-    declare hasTrack: HasManyHasAssociationMixin<Track, number>;
-    declare hasTracks: HasManyHasAssociationsMixin<Track, number>;
+    declare addTrack: HasManyAddAssociationMixin<Track, typeof DataTypes.UUID>;
+    declare addTracks: HasManyAddAssociationsMixin<Track, typeof DataTypes.UUID>;
+    declare setTracks: HasManySetAssociationsMixin<Track, typeof DataTypes.UUID>;
+    declare removeTrack: HasManyRemoveAssociationMixin<Track, typeof DataTypes.UUID>;
+    declare removeTracks: HasManyRemoveAssociationsMixin<Track, typeof DataTypes.UUID>;
+    declare hasTrack: HasManyHasAssociationMixin<Track, typeof DataTypes.UUID>;
+    declare hasTracks: HasManyHasAssociationsMixin<Track, typeof DataTypes.UUID>;
     declare countTracks: HasManyCountAssociationsMixin;
-    declare createTrack: HasManyCreateAssociationMixin<Track, "id">;
-
+    // @ts-ignore
+    declare createTrack: HasManyCreateAssociationMixin<Track, "albumId">
     declare tracks?: NonAttribute<Track[]>;
 
+    // Artist Associations
+    declare getArtist: BelongsToGetAssociationMixin<Artist>;
+    declare setArtist: BelongsToSetAssociationMixin<Artist, typeof DataTypes.UUID>;
+    declare createArtist: BelongsToCreateAssociationMixin<Artist>;
+    declare artist?: NonAttribute<Artist>;
+
     declare static associations: {
-        tracks: Association<Album, Track>
+        tracks: Association<Album, Track>,
+        artist: Association<Album, Artist>
     }
 
     static modelAttributes = {
         id: {
-            type: DataTypes.INTEGER,
-            autoIncrement: true,
-            primaryKey: true,
-            allowNull: false
+            type: DataTypes.UUID,
+            allowNull: false,
+            defaultValue: DataTypes.UUIDV4,
+            primaryKey:true
         },
         title: {
             type: DataTypes.STRING,

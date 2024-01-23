@@ -1,16 +1,20 @@
-import { Sequelize, Options, Model } from "sequelize"
+import { Sequelize, Options, Model, DataTypes } from "sequelize"
 import { DBInfo, RawInfo, DBMSInfo, SqliteInfo, ISequelizeDBMSInfo, ISequelizeSqliteInfo } from "./DbManager.js";
 
 import Album from "./models/Album.js";
 import Track from "./models/Track.js";
 import Genre from "./models/Genre.js";
-import Artist from "./models/Artists.js";
+import Artist from "./models/Artist.js";
 import User from "./models/User.js";
 import { Logger } from "./utils/Logger.mjs";
 import { exec } from "child_process";
 import { CONFIG_FOLDER } from "./index.mjs";
 import { writeFileSync } from "fs";
 import path from "path";
+import Playlist from "./models/Playlist.js";
+import AuthenticationToken from "./models/AuthenticationToken.js";
+import PlaylistTrack from "./models/PlaylistTracks.js";
+import initPlaylistTracksTable from "./models/PlaylistTracks.js";
 
 
 export function isRawInfo(info: DBInfo): info is RawInfo {
@@ -112,7 +116,11 @@ class DbManager {
         await Album.init(Album.modelAttributes, {sequelize: this.#sequelize, timestamps: false});
         await Track.init(Track.modelAttributes, {sequelize: this.#sequelize, timestamps: false});
         await Genre.init(Genre.modelAttributes, {sequelize: this.#sequelize, timestamps: false});
-
+        await Playlist.init(Playlist.modelAttributes, {sequelize: this.#sequelize, timestamps: false});
+        await AuthenticationToken.init(AuthenticationToken.modelAttributes, {sequelize:this.#sequelize, timestamps:false});
+        initPlaylistTracksTable(this.#sequelize);
+        
+        
         // Declaring associations
         Album.hasMany(Track, { foreignKey: "albumId" });
         Track.belongsTo(Album, {foreignKey: "albumId"});
@@ -120,8 +128,21 @@ class DbManager {
         Track.belongsToMany(Genre, { through: "TrackGenres", foreignKey: "trackId", timestamps: false});
         Genre.belongsToMany(Track, { through: "TrackGenres", foreignKey: "genreId", timestamps: false});
 
-        Artist.hasMany(Track, {foreignKey: "artistId", sourceKey: "id"});
-        Track.belongsTo(Artist, { foreignKey: "artistId"});
+        Artist.belongsToMany(Track, {through: "TrackArtists", foreignKey: "artistId", timestamps: false});
+        Track.belongsToMany(Artist, {through: "TrackArtists", foreignKey: "trackId", timestamps: false});
+
+        Artist.hasMany(Album, {foreignKey: "artistId"});
+        Album.belongsTo(Artist, {foreignKey: "artistId"});
+
+        Track.belongsToMany(Playlist, {through: "PlaylistTracks", foreignKey: "trackId", timestamps: false});
+        Playlist.belongsToMany(Track, {through: "PlaylistTracks", foreignKey: "playlistId", timestamps: false});
+
+
+        User.hasMany(Playlist, {foreignKey: "userId"});
+        Playlist.belongsTo(User, {foreignKey: "userId"});
+
+        User.hasMany(AuthenticationToken, {foreignKey: "userId"});
+        AuthenticationToken.belongsTo(User, {foreignKey: "userId"});
 
         await this.#sequelize.sync();
     }

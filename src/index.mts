@@ -12,7 +12,8 @@ import Cithar from "./api/Cithar.js";
 
 export const CONFIG_FOLDER = "./config";
 
-
+Logger.logLevel = LOG_LEVEL.DEBUG;
+Logger.dLog("Getting config");
 var config: IConfig = await getConfig();
 
 var configWizard = await configApp(config);

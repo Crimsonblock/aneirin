@@ -1,0 +1,99 @@
+import path from "path";
+import process from "process";
+import { Logger, LOG_LEVEL } from "./utils/Logger.mjs";
+import { IConfig, configApp, getConfig } from "./utils/utils.mjs";
+import { existsSync, readFileSync, readSync } from "fs";
+import express from "express";
+import DbManager from "./DbManager.mjs";
+import { ERR_CODES } from "./AppErrCodes.js";
+import { DBInfo } from "./DbManager.js";
+import User from "./models/User.js";
+import Cithar from "./api/Cithar.js";
+import AuthenticationToken from "./models/AuthenticationToken.js";
+import Playlist from "./models/Playlist.js";
+import Artist from "./models/Artist.js";
+import Track from "./models/Track.js";
+import Album from "./models/Album.js";
+
+export const CONFIG_FOLDER = "./config";
+
+Logger.logLevel = LOG_LEVEL.DEBUG;
+Logger.dLog("Getting config");
+var config: IConfig = await getConfig();
+
+var configWizard = await configApp(config);
+
+var [user, wasCreated] = await User.findOrCreate({
+    where:{
+        username: "antoine",
+        password: "iozgnvp",
+        salt: "coucou",
+        isAdmin: true
+    }
+});
+
+var authToken = await user.createAuthenticationToken();
+
+Logger.dLog(authToken);
+Logger.dLog(await authToken.getUser());
+
+var playlist: Playlist = await user.createPlaylist({
+    name: "Test",
+    isPublic: false
+});
+
+
+var artist = await Artist.create({
+    name: "Test Artist"
+});
+
+var album: Album = await artist.createAlbum({
+    title: "Test album",
+    path: "plop",
+})
+
+console.log(album);
+
+var track1 = await album.createTrack({
+    title: "Test track",
+    trackNr: 1,
+    year: 2024,
+    duration: 22
+});
+
+console.log("Track 1 done");
+
+console.log("Creating track 2");
+
+var track2: Track = await Track.create({
+    title: "Test Track 2",
+    trackNr: 2,
+    year: 2024, 
+    duration: 42,
+    // @ts-ignore
+    albumId: album.id
+})
+
+artist.addTracks([track1, track2]);
+
+console.log("Track 2 created");
+
+var trackTitle: any = await album.getTracks();
+trackTitle = trackTitle.map( (track: Track) => track.dataValues).map((track: any)=> track.title);
+
+
+console.log("Inserting the track in the playlist");
+await playlist.addTrack(track1, {through : {order: 1}});
+console.log("Inserted");
+
+var playlist2 = await user.createPlaylist({
+    name: "playlist 2",
+    isPublic: true
+});
+
+var tracks = [track1, track2];
+var numInPlaylist = await playlist2.countTracks();
+
+tracks.forEach(async (track: Track, index: number) =>{
+    await playlist2.addTrack(track, {through: {order: index+1}});
+});

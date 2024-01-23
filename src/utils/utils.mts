@@ -12,7 +12,7 @@ const CONFIG_FOLDER = "./config"
 
 interface IUserInfo {
     username: string,
-    password?: string
+    password: string
 }
 
 export interface IConfig{
@@ -29,14 +29,13 @@ export interface ISetupWizardParameters{
  * 
  * @returns DBInfo The information of the database.
  */
-export function processEnvironmentVariables(): DBInfo | void {    
+export function processEnvironmentVariables(): DBInfo | void {  
     if (typeof (process.env.DB_TYPE) == "undefined") return;
     
     var dbInfo = getDbEnv();
     
     if (dbInfo != null)
     return dbInfo;
-    
 }
 
 /**
@@ -83,34 +82,28 @@ function getDbEnv(): DBInfo | null {
  * @returns dbInfo the DBMSInfo that contains the connection information
  */
 function getDBMSInfo(): DBInfo | null{
+
+    // Checks All the necessary information exists within the environment variables
     if (typeof (process.env.DB_HOST) == "undefined") {
         Logger.dLog("Database Host not provided, will be setup in web wizard");
         return null;
     }
-    
-    if (typeof (process.env.DB_TYPE) == "undefined") {
+    else if (typeof (process.env.DB_TYPE) == "undefined") {
         Logger.dLog("Database type not provided, will be setup in the web wizard");
         return null;
     }
-    
-    if (typeof (process.env.DB_NAME) == "undefined") {
+    else if (typeof (process.env.DB_NAME) == "undefined") {
         Logger.dLog("Database type not provided, will be setup in the web wizard");
         return null;
     }
-    
+
     var dbUser = getDbUserEnv();
-    
     if (dbUser == null) {
         Logger.dLog("Database user not provided, will be setup in the web wizard");
         return null;
     }
 
-    else {
-        if (typeof (dbUser.password) == "undefined") {
-            Logger.dLog("Database password not provided, will be setup in the web wizard");
-            return null;
-        }
-        
+    else {        
         var dbInfo: DBInfo = {
             type: (process.env.DB_TYPE as Dialect),
             username: dbUser.username,
@@ -131,7 +124,7 @@ function getDBMSInfo(): DBInfo | null{
  * @returns IUserInfo the database connection information if found.
  */
 function getDbUserEnv(): IUserInfo | null {
-    if (typeof (process.env.DB_USERNAME) == "undefined") {
+    if (typeof (process.env.DB_USERNAME) == "undefined" || typeof (process.env.DB_PASSWORD) == "undefined") {
         return null;
     }
     return {
@@ -178,6 +171,7 @@ export async function getConfig(): Promise<IConfig>{
     mkdirSync(CONFIG_FOLDER);
     
     if(!existsSync(path.join(CONFIG_FOLDER, "config.json"))){
+        Logger.dLog("Config file does not exist");
         configFileExists = false;
         
         var envDbInfo = processEnvironmentVariables()
